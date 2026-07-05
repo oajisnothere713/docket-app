@@ -15,7 +15,8 @@ export default function DocketSummary({ docket, onSubmit }) {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/dockets/${docket._id}/submit`, {
+      const API_URL = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${API_URL}/api/dockets/${docket._id}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

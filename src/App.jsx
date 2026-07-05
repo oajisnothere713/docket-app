@@ -15,7 +15,8 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   const fetchDockets = () => {
-    fetch('/api/dockets')
+    const API_URL = import.meta.env.VITE_API_URL || '';
+    fetch(`${API_URL}/api/dockets`)
       .then(res => res.json())
       .then(data => {
         setDockets(data);
