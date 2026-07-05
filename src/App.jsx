@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import Sidebar from './components/Sidebar';
@@ -8,8 +8,39 @@ import DocketAdditional from './components/DocketAdditional';
 import './index.css';
 
 function App() {
-  const [currentScreen, setCurrentScreen] = useState('schedule'); // 'schedule' or 'docket'
-  const [docketPage, setDocketPage] = useState('summary'); // 'summary' or 'additional'
+  const [currentScreen, setCurrentScreen] = useState('schedule');
+  const [docketPage, setDocketPage] = useState('summary');
+  const [dockets, setDockets] = useState([]);
+  const [selectedDocket, setSelectedDocket] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDockets = () => {
+    fetch('/api/dockets')
+      .then(res => res.json())
+      .then(data => {
+        setDockets(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch dockets:', err);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchDockets();
+  }, []);
+
+  const openDocket = (docket) => {
+    setSelectedDocket(docket);
+    setCurrentScreen('docket');
+    setDocketPage('summary');
+  };
+
+  const handleDocketSubmit = () => {
+    fetchDockets(); // Refresh the list
+    setCurrentScreen('schedule'); // Go back to schedule
+  };
 
   return (
     <div style={{minHeight:'100vh',width:'100%',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'34px 20px',background:'radial-gradient(1200px 700px at 50% -10%,#D5DCE7,#C0C9D7)'}}>
@@ -21,22 +52,23 @@ function App() {
           {currentScreen === 'schedule' && (
             <div data-screen-label="Schedule" style={{display:'flex',flexDirection:'column',height:'100%',minHeight:0}}>
               <Header />
-              <ScheduleScreen onOpenDocket={() => setCurrentScreen('docket')} />
+              <ScheduleScreen dockets={dockets} loading={loading} onOpenDocket={openDocket} />
               <BottomNav />
             </div>
           )}
 
-          {currentScreen === 'docket' && (
+          {currentScreen === 'docket' && selectedDocket && (
             <div data-screen-label="Docket" style={{display:'flex',height:'100%',minHeight:0}}>
               <Sidebar 
+                docket={selectedDocket}
                 onBack={() => setCurrentScreen('schedule')}
                 currentPage={docketPage}
                 onChangePage={setDocketPage}
               />
               <div style={{flex:1,display:'flex',flexDirection:'column',minWidth:0,height:'100%',background:'#F4F7FB'}}>
                 <div id="docketScroll" style={{flex:1,overflowY:'auto',minHeight:0,padding:'20px 22px 30px'}}>
-                  {docketPage === 'summary' && <DocketSummary />}
-                  {docketPage === 'additional' && <DocketAdditional />}
+                  {docketPage === 'summary' && <DocketSummary docket={selectedDocket} onSubmit={handleDocketSubmit} />}
+                  {docketPage === 'additional' && <DocketAdditional docket={selectedDocket} />}
                 </div>
               </div>
             </div>

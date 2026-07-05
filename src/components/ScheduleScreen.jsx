@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function ScheduleScreen({ onOpenDocket }) {
+export default function ScheduleScreen({ dockets, loading, onOpenDocket }) {
   const [isGrid, setIsGrid] = useState(false);
 
   return (
@@ -32,37 +32,33 @@ export default function ScheduleScreen({ onOpenDocket }) {
             <span style={{fontSize:'10.5px',color:'#9CA3AF',fontWeight:600}}>Bulk Mix Truck · Ramesh P, Anil M</span>
           </div>
           <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
-            
-            <div className="bcard bcard-inprogress" onClick={onOpenDocket} style={{padding:'12px 14px',borderLeftWidth:'4px'}}>
-              <div style={{display:'flex',alignItems:'center',gap:'9px'}}>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:'flex',alignItems:'center',gap:'8px'}}><span style={{fontSize:'14px',fontWeight:800,color:'#1E3A5C'}}>BL-2026-041</span><span className="chip chip-amber">In Progress</span></div>
-                  <div style={{fontSize:'12px',fontWeight:700,color:'#374151',marginTop:'5px'}}><i className="ti ti-map-pin" style={{fontSize:'13px',color:'#B0B8C4'}}></i> Panna Pit A</div>
-                  <div style={{fontSize:'11px',color:'#6B7280',marginTop:'3px'}}>Mahesh Verma (Shotfirer)</div>
+            {loading ? (
+              <div style={{textAlign:'center',padding:'20px',color:'#8A97A8',fontSize:'13px'}}>Loading schedule...</div>
+            ) : dockets.length === 0 ? (
+              <div style={{textAlign:'center',padding:'20px',color:'#8A97A8',fontSize:'13px'}}>No dockets scheduled for today.</div>
+            ) : (
+              dockets.map(docket => (
+                <div key={docket._id} className={`bcard bcard-${docket.status}`} onClick={() => onOpenDocket(docket)} style={{padding:'12px 14px',borderLeftWidth:'4px'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'9px'}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                        <span style={{fontSize:'14px',fontWeight:800,color:'#1E3A5C'}}>{docket.blastNo}</span>
+                        <span className={`chip chip-${docket.status === 'inprogress' ? 'amber' : docket.status === 'planned' ? 'grey' : 'green'}`}>
+                          {docket.status === 'inprogress' ? 'In Progress' : docket.status.charAt(0).toUpperCase() + docket.status.slice(1)}
+                        </span>
+                      </div>
+                      <div style={{fontSize:'12px',fontWeight:700,color:'#374151',marginTop:'5px'}}><i className="ti ti-map-pin" style={{fontSize:'13px',color:'#B0B8C4'}}></i> {docket.site}</div>
+                      <div style={{fontSize:'11px',color:'#6B7280',marginTop:'3px'}}>{docket.shotfirer} (Shotfirer)</div>
+                    </div>
+                    <div style={{textAlign:'right',flexShrink:0}}>
+                      <div style={{fontSize:'14px',fontWeight:800,color:'#111827'}}><i className="ti ti-clock" style={{fontSize:'13px',color:'#B0B8C4'}}></i> {docket.scheduledStart} hrs</div>
+                      <div style={{fontSize:'9.5px',color:'#AAB4C2',marginTop:'3px',fontWeight:600}}>{docket.docketNo}</div>
+                      <i className="ti ti-chevron-right" style={{fontSize:'17px',color:'#C8D0DA',marginTop:'2px'}}></i>
+                    </div>
+                  </div>
                 </div>
-                <div style={{textAlign:'right',flexShrink:0}}>
-                  <div style={{fontSize:'14px',fontWeight:800,color:'#111827'}}><i className="ti ti-clock" style={{fontSize:'13px',color:'#B0B8C4'}}></i> 06:30 hrs</div>
-                  <div style={{fontSize:'9.5px',color:'#AAB4C2',marginTop:'3px',fontWeight:600}}>DD-94021</div>
-                  <i className="ti ti-chevron-right" style={{fontSize:'17px',color:'#C8D0DA',marginTop:'2px'}}></i>
-                </div>
-              </div>
-            </div>
-
-            <div className="bcard bcard-planned" onClick={onOpenDocket} style={{padding:'12px 14px',borderLeftWidth:'4px'}}>
-              <div style={{display:'flex',alignItems:'center',gap:'9px'}}>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:'flex',alignItems:'center',gap:'8px'}}><span style={{fontSize:'14px',fontWeight:800,color:'#1E3A5C'}}>BL-2026-042</span><span className="chip chip-grey">Planned</span></div>
-                  <div style={{fontSize:'12px',fontWeight:700,color:'#374151',marginTop:'5px'}}><i className="ti ti-map-pin" style={{fontSize:'13px',color:'#B0B8C4'}}></i> Panna Pit B</div>
-                  <div style={{fontSize:'11px',color:'#6B7280',marginTop:'3px'}}>Sanjay Mishra (Shotfirer)</div>
-                </div>
-                <div style={{textAlign:'right',flexShrink:0}}>
-                  <div style={{fontSize:'14px',fontWeight:800,color:'#111827'}}><i className="ti ti-clock" style={{fontSize:'13px',color:'#B0B8C4'}}></i> 11:15 hrs</div>
-                  <div style={{fontSize:'9.5px',color:'#AAB4C2',marginTop:'3px',fontWeight:600}}>DD-94022</div>
-                  <i className="ti ti-chevron-right" style={{fontSize:'17px',color:'#C8D0DA',marginTop:'2px'}}></i>
-                </div>
-              </div>
-            </div>
-
+              ))
+            )}
           </div>
         </div>
         <div style={{height:'8px'}}></div>
