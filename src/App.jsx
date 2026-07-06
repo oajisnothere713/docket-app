@@ -30,6 +30,13 @@ function App() {
 
   useEffect(() => {
     fetchDockets();
+    
+    // Poll for live updates every 10 seconds
+    const interval = setInterval(() => {
+      fetchDockets();
+    }, 10000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const openDocket = (docket) => {
