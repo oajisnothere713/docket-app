@@ -1,11 +1,67 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export default function DocketSummary({ docket, onSubmit }) {
   const primaryProduct = docket.products.find(p => p.cls === 'BULK') || docket.products[0];
   const [actualQty, setActualQty] = useState(primaryProduct?.actualQty || primaryProduct?.scheduledQty || '');
   const [hasVariance, setHasVariance] = useState(primaryProduct?.actualQty && primaryProduct.actualQty !== primaryProduct.scheduledQty);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [receiverName, setReceiverName] = useState('');
+  const [receiverName, setReceiverName] = useState(docket.signature?.signedBy && docket.signature.signedBy !== 'Customer' ? docket.signature.signedBy : '');
+
+  // Signature Pad state
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasSignature, setHasSignature] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.strokeStyle = '#1E3A5C';
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+    }
+  }, []);
+
+  const startDrawing = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const x = ((e.clientX || e.touches?.[0]?.clientX) - rect.left) * (canvas.width / rect.width);
+    const y = ((e.clientY || e.touches?.[0]?.clientY) - rect.top) * (canvas.height / rect.height);
+    
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsDrawing(true);
+    setHasSignature(true);
+  };
+
+  const draw = (e) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const x = ((e.clientX || e.touches?.[0]?.clientX) - rect.left) * (canvas.width / rect.width);
+    const y = ((e.clientY || e.touches?.[0]?.clientY) - rect.top) * (canvas.height / rect.height);
+    
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+  
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasSignature(false);
+    ctx.beginPath();
+  };
 
   const handleActualChange = (e) => {
     setActualQty(e.target.value);
@@ -21,7 +77,11 @@ export default function DocketSummary({ docket, onSubmit }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           actualQuantities: { [primaryProduct.matNo]: Number(actualQty) },
-          signature: { isSigned: true, signedBy: receiverName || 'Customer' }
+          signature: { 
+            isSigned: true, 
+            signedBy: receiverName || 'Customer',
+            signatureData: canvasRef.current ? canvasRef.current.toDataURL() : null
+          }
         })
       });
       if (response.ok) {
@@ -152,14 +212,37 @@ export default function DocketSummary({ docket, onSubmit }) {
           {/* received by */}
           <div style={{border:'1.5px solid #E8EDF3',borderRadius:'12px',padding:'14px',background:'#fff'}}>
             <div style={{fontSize:'10px',fontWeight:800,color:'#98A2B2',textTransform:'uppercase',letterSpacing:'.5px'}}>Received By (Customer)</div>
-            <input placeholder="Enter receiver's name" value={receiverName} onChange={e => setReceiverName(e.target.value)} style={{width:'100%',border:'1.5px solid #E3E8EF',borderRadius:'8px',padding:'7px 10px',fontSize:'13px',fontWeight:600,color:'#1F2937',outline:'none',marginTop:'6px'}}/>
+            <input placeholder="Enter receiver's name" disabled={!!docket.signature?.signatureData} value={receiverName} onChange={e => setReceiverName(e.target.value)} style={{width:'100%',border:'1.5px solid #E3E8EF',borderRadius:'8px',padding:'7px 10px',fontSize:'13px',fontWeight:600,color: docket.signature?.signatureData ? '#9CA3AF' : '#1F2937',outline:'none',marginTop:'6px',background: docket.signature?.signatureData ? '#F9FAFB' : '#fff'}}/>
             <div style={{position:'relative',height:'78px',borderRadius:'9px',background:'#fff',border:'1.5px dashed #C3CCD9',marginTop:'9px',overflow:'hidden',touchAction:'none'}}>
-              <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}><span style={{fontSize:'11.5px',color:'#B0B8C4',fontStyle:'italic'}}>Customer signs here</span></div>
+              {docket.signature?.signatureData ? (
+                <img src={docket.signature.signatureData} style={{width:'100%',height:'100%',objectFit:'contain',padding:'4px'}} alt="Customer Signature" />
+              ) : (
+                <>
+                  {!hasSignature && (
+                    <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}><span style={{fontSize:'11.5px',color:'#B0B8C4',fontStyle:'italic'}}>Customer signs here</span></div>
+                  )}
+                  <canvas
+                    ref={canvasRef}
+                    width={300}
+                    height={78}
+                    style={{ width: '100%', height: '100%', cursor: 'crosshair', position: 'relative', zIndex: 10 }}
+                    onMouseDown={startDrawing}
+                    onMouseMove={draw}
+                    onMouseUp={stopDrawing}
+                    onMouseLeave={stopDrawing}
+                    onTouchStart={startDrawing}
+                    onTouchMove={draw}
+                    onTouchEnd={stopDrawing}
+                  />
+                </>
+              )}
             </div>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:'8px'}}>
-              <span style={{fontSize:'10.5px',color:'#9CA3AF',fontWeight:600}}></span>
-              <button className="txtbtn" style={{fontSize:'11px',padding:'2px'}}><i className="ti ti-eraser" style={{fontSize:'13px'}}></i>Clear</button>
-            </div>
+            {!docket.signature?.signatureData && (
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:'8px'}}>
+                <span style={{fontSize:'10.5px',color:'#9CA3AF',fontWeight:600}}></span>
+                <button onClick={clearSignature} className="txtbtn" style={{fontSize:'11px',padding:'2px',cursor:'pointer'}}><i className="ti ti-eraser" style={{fontSize:'13px'}}></i>Clear</button>
+              </div>
+            )}
           </div>
         </div>
         {/* submit button */}

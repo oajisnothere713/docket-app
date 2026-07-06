@@ -25,6 +25,7 @@ export const getSchedule = async (req, res) => {
           scheduledStart: booking.startTime || '',
           customerName: booking.customerName || '',
           contractNo: '',
+          signature: dd.signature,
           products: (dd.products || []).map(p => ({
             matNo: p.materialId,
             name: p.name,
