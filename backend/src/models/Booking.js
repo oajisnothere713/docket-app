@@ -18,7 +18,8 @@ const deliveryDocketSchema = new mongoose.Schema({
   products: [productSchema],
   signature: {
     isSigned: Boolean,
-    signedBy: String
+    signedBy: String,
+    signatureData: String
   }
 }, { _id: false });
 
