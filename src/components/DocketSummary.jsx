@@ -78,9 +78,9 @@ export default function DocketSummary({ docket, onSubmit }) {
         body: JSON.stringify({
           actualQuantities: { [primaryProduct.matNo]: Number(actualQty) },
           signature: { 
-            isSigned: true, 
-            signedBy: receiverName || 'Customer',
-            signatureData: canvasRef.current ? canvasRef.current.toDataURL() : null
+            isSigned: hasSignature || receiverName.trim().length > 0, 
+            signedBy: receiverName.trim() || '',
+            signatureData: hasSignature && canvasRef.current ? canvasRef.current.toDataURL() : null
           }
         })
       });
