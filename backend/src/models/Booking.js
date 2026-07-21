@@ -13,6 +13,7 @@ const serviceSchema = new mongoose.Schema({
   serviceId: String,
   name: String,
   qty: Number,
+  actualQty: Number,
   uom: String
 }, { _id: false });
 
