@@ -9,6 +9,13 @@ const productSchema = new mongoose.Schema({
   uom: String
 }, { _id: false });
 
+const serviceSchema = new mongoose.Schema({
+  serviceId: String,
+  name: String,
+  qty: Number,
+  uom: String
+}, { _id: false });
+
 const deliveryDocketSchema = new mongoose.Schema({
   docketNumber: String,
   status: { type: String, default: 'Planned' },
@@ -16,6 +23,8 @@ const deliveryDocketSchema = new mongoose.Schema({
   operatorIds: [String],
   shotfirerIds: [String],
   products: [productSchema],
+  services: [serviceSchema],
+  notes: String,
   signature: {
     isSigned: Boolean,
     signedBy: String,
@@ -32,6 +41,8 @@ const bookingSchema = new mongoose.Schema({
   bookingType: String,
   customerName: String,
   shipToSite: String,
+  contractId: String,
+  customerPO: String,
   deliveryDockets: [deliveryDocketSchema]
 }, {
   timestamps: true,

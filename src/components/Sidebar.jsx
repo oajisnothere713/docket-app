@@ -24,23 +24,23 @@ export default function Sidebar({ docket, onBack, currentPage, onChangePage }) {
         <div className={`grp-head ${currentPage === 'summary' ? 'on' : ''}`} onClick={() => onChangePage('summary')}><i className="ti ti-clipboard-list" style={{fontSize:'16px'}}></i>Delivery Summary<i className="ti ti-chevron-down" style={{fontSize:'15px',marginLeft:'auto',color:'#8493AB'}}></i></div>
         {currentPage === 'summary' && (
           <div>
-            <div className="snav"><i className="ti ti-user-circle" style={{fontSize:'15px'}}></i>Customer Info<i className="ti ti-circle-check tick"></i></div>
-            <div className="snav"><i className="ti ti-truck" style={{fontSize:'15px'}}></i>Vehicle &amp; Operator<i className="ti ti-circle-check tick"></i></div>
-            <div className="snav"><i className="ti ti-package" style={{fontSize:'15px'}}></i>Products<i className="ti ti-circle-check tick"></i></div>
-            <div className="snav"><i className="ti ti-tools" style={{fontSize:'15px'}}></i>Services<i className="ti ti-circle-check tick"></i></div>
-            <div className="snav"><i className="ti ti-signature" style={{fontSize:'15px'}}></i>Notes &amp; Signature</div>
+            <div className="snav" onClick={() => document.getElementById('sec-customer')?.scrollIntoView({behavior: 'smooth'})} style={{cursor:'pointer'}}><i className="ti ti-user-circle" style={{fontSize:'15px'}}></i>Customer Info<i className="ti ti-circle-check tick"></i></div>
+            <div className="snav" onClick={() => document.getElementById('sec-vehicle')?.scrollIntoView({behavior: 'smooth'})} style={{cursor:'pointer'}}><i className="ti ti-truck" style={{fontSize:'15px'}}></i>Vehicle &amp; Operator<i className="ti ti-circle-check tick"></i></div>
+            <div className="snav" onClick={() => document.getElementById('sec-products')?.scrollIntoView({behavior: 'smooth'})} style={{cursor:'pointer'}}><i className="ti ti-package" style={{fontSize:'15px'}}></i>Products<i className="ti ti-circle-check tick"></i></div>
+            <div className="snav" onClick={() => document.getElementById('sec-services')?.scrollIntoView({behavior: 'smooth'})} style={{cursor:'pointer'}}><i className="ti ti-tools" style={{fontSize:'15px'}}></i>Services<i className="ti ti-circle-check tick"></i></div>
+            <div className="snav" onClick={() => document.getElementById('sec-signature')?.scrollIntoView({behavior: 'smooth'})} style={{cursor:'pointer'}}><i className="ti ti-signature" style={{fontSize:'15px'}}></i>Notes &amp; Signature</div>
           </div>
         )}
         {/* group 2 */}
         <div className={`grp-head ${currentPage === 'additional' ? 'on' : ''}`} onClick={() => onChangePage('additional')} style={{marginTop:'2px'}}><i className="ti ti-adjustments-alt" style={{fontSize:'16px'}}></i>Additional Information<i className="ti ti-chevron-right" style={{fontSize:'15px',marginLeft:'auto',color:'#8493AB'}}></i></div>
         {currentPage === 'additional' && (
           <div>
-            <div className="snav"><i className="ti ti-bmp" style={{fontSize:'15px'}}></i>Shot Information</div>
-            <div className="snav"><i className="ti ti-clock-hour-4" style={{fontSize:'15px'}}></i>Time Information</div>
-            <div className="snav"><i className="ti ti-scale" style={{fontSize:'15px'}}></i>Cup Weights</div>
-            <div className="snav"><i className="ti ti-route" style={{fontSize:'15px'}}></i>Distance</div>
-            <div className="snav"><i className="ti ti-barrel" style={{fontSize:'15px'}}></i>Bulk Mass</div>
-            <div className="snav"><i className="ti ti-note" style={{fontSize:'15px'}}></i>Notes</div>
+            <div className="snav" onClick={() => document.getElementById('sec-shot')?.scrollIntoView({behavior: 'smooth'})} style={{cursor:'pointer'}}><i className="ti ti-bmp" style={{fontSize:'15px'}}></i>Shot Information</div>
+            <div className="snav" onClick={() => document.getElementById('sec-time')?.scrollIntoView({behavior: 'smooth'})} style={{cursor:'pointer'}}><i className="ti ti-clock-hour-4" style={{fontSize:'15px'}}></i>Time Information</div>
+            <div className="snav" onClick={() => document.getElementById('sec-cup')?.scrollIntoView({behavior: 'smooth'})} style={{cursor:'pointer'}}><i className="ti ti-scale" style={{fontSize:'15px'}}></i>Cup Weights</div>
+            <div className="snav" onClick={() => document.getElementById('sec-distance')?.scrollIntoView({behavior: 'smooth'})} style={{cursor:'pointer'}}><i className="ti ti-route" style={{fontSize:'15px'}}></i>Distance</div>
+            <div className="snav" onClick={() => document.getElementById('sec-bulk')?.scrollIntoView({behavior: 'smooth'})} style={{cursor:'pointer'}}><i className="ti ti-barrel" style={{fontSize:'15px'}}></i>Bulk Mass</div>
+            <div className="snav" onClick={() => document.getElementById('sec-notes')?.scrollIntoView({behavior: 'smooth'})} style={{cursor:'pointer'}}><i className="ti ti-note" style={{fontSize:'15px'}}></i>Notes</div>
           </div>
         )}
       </div>
