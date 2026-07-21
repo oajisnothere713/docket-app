@@ -164,7 +164,7 @@ export default function ScheduleScreen({ dockets, loading, onOpenDocket }) {
         <div style={{display:'flex',alignItems:'center',gap:'5px'}}><span className="sdot sdot-planned"></span><span style={{fontSize:'10px',color:'#6B7280',fontWeight:600}}>Planned</span></div>
         <div style={{display:'flex',alignItems:'center',gap:'5px'}}><span className="sdot sdot-inprogress"></span><span style={{fontSize:'10px',color:'#6B7280',fontWeight:600}}>In Progress</span></div>
         <div style={{display:'flex',alignItems:'center',gap:'5px'}}><span className="sdot sdot-delivered"></span><span style={{fontSize:'10px',color:'#6B7280',fontWeight:600}}>Delivered</span></div>
-        <div style={{display:'flex',alignItems:'center',gap:'5px'}}><span className="sdot sdot-submitted"></span><span style={{fontSize:'10px',color:'#6B7280',fontWeight:600}}>Submitted</span></div>
+        <div style={{display:'flex',alignItems:'center',gap:'5px'}}><span className="sdot sdot-signed"></span><span style={{fontSize:'10px',color:'#6B7280',fontWeight:600}}>Signed</span></div>
         <div style={{display:'flex',alignItems:'center',gap:'5px',marginLeft:'auto'}}><span style={{width:'11px',height:'11px',borderRadius:'3px',background:'#FDECDF',borderLeft:'3px solid #E8590C'}}></span><span style={{fontSize:'10px',color:'#6B7280',fontWeight:600}}>Your vehicle</span></div>
       </div>
     </div>

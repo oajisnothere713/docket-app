@@ -21,6 +21,12 @@ function App() {
       .then(data => {
         setDockets(data);
         setLoading(false);
+        setSelectedDocket(prev => {
+          if (prev) {
+            return data.find(d => d._id === prev._id) || prev;
+          }
+          return prev;
+        });
       })
       .catch(err => {
         console.error('Failed to fetch dockets:', err);

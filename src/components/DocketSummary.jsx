@@ -1,16 +1,39 @@
 import { useState, useRef, useEffect } from 'react';
 
 export default function DocketSummary({ docket, onSubmit }) {
-  const primaryProduct = docket.products.find(p => p.cls === 'BULK') || docket.products[0];
-  const [actualQty, setActualQty] = useState(primaryProduct?.actualQty || primaryProduct?.scheduledQty || '');
-  const [hasVariance, setHasVariance] = useState(primaryProduct?.actualQty && primaryProduct.actualQty !== primaryProduct.scheduledQty);
+  const getInitialQuantities = () => {
+    const q = {};
+    docket.products.forEach(p => {
+      q[p.matNo] = p.actualQty !== undefined && p.actualQty !== null ? p.actualQty : p.scheduledQty;
+    });
+    if (docket.services) {
+      docket.services.forEach(s => {
+        q[s.matNo] = s.actualQty !== undefined && s.actualQty !== null ? s.actualQty : s.scheduledQty;
+      });
+    }
+    return q;
+  };
+  const [actualQuantities, setActualQuantities] = useState(getInitialQuantities());
+
+  const hasVariance = docket.products.some(p => actualQuantities[p.matNo] != p.scheduledQty) || 
+                     (docket.services && docket.services.some(s => actualQuantities[s.matNo] != s.scheduledQty));
+
+  const handleQtyChange = (matNo, val) => {
+    setActualQuantities(prev => ({
+      ...prev,
+      [matNo]: val
+    }));
+  };
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receiverName, setReceiverName] = useState(docket.signature?.signedBy && docket.signature.signedBy !== 'Customer' ? docket.signature.signedBy : '');
+  const [notes, setNotes] = useState(docket.notes || '');
 
   // Signature Pad state
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
+  const isReadOnly = ['delivered', 'signed', 'submitted'].includes(docket.status);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -24,6 +47,7 @@ export default function DocketSummary({ docket, onSubmit }) {
   }, []);
 
   const startDrawing = (e) => {
+    if (isReadOnly) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -63,10 +87,7 @@ export default function DocketSummary({ docket, onSubmit }) {
     ctx.beginPath();
   };
 
-  const handleActualChange = (e) => {
-    setActualQty(e.target.value);
-    setHasVariance(e.target.value != primaryProduct?.scheduledQty);
-  };
+  // handleQtyChange is defined above
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -76,7 +97,7 @@ export default function DocketSummary({ docket, onSubmit }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          actualQuantities: { [primaryProduct.matNo]: Number(actualQty) },
+          actualQuantities: Object.fromEntries(Object.entries(actualQuantities).map(([k, v]) => [k, Number(v)])),
           signature: { 
             isSigned: hasSignature || receiverName.trim().length > 0, 
             signedBy: receiverName.trim() || '',
@@ -107,7 +128,7 @@ export default function DocketSummary({ docket, onSubmit }) {
           <div className="fld fld-ro"><div className="fld-lbl"><i className="ti ti-lock" style={{fontSize:'10px'}}></i>Blast No.</div><div className="fld-val">{docket.blastNo}</div></div>
           <div className="fld fld-ro"><div className="fld-lbl"><i className="ti ti-lock" style={{fontSize:'10px'}}></i>Plant</div><div className="fld-val">{docket.plant}</div></div>
           <div className="fld fld-ro"><div className="fld-lbl"><i className="ti ti-lock" style={{fontSize:'10px'}}></i>Scheduled Start</div><div className="fld-val">{docket.scheduledStart} hrs</div></div>
-          <div className="fld"><div className="fld-lbl" style={{color:'#E8590C'}}><i className="ti ti-pencil" style={{fontSize:'10px'}}></i>Actual Arrival Time</div><input placeholder="Enter arrival time" defaultValue={docket.actualArrival || ''} /></div>
+          <div className="fld"><div className="fld-lbl" style={{color:'#E8590C'}}><i className="ti ti-pencil" style={{fontSize:'10px'}}></i>Actual Arrival Time</div><input placeholder="Enter arrival time" defaultValue={docket.actualArrival || ''} disabled={isReadOnly} /></div>
         </div>
       </div>
 
@@ -118,8 +139,8 @@ export default function DocketSummary({ docket, onSubmit }) {
           <div className="fld fld-ro" style={{gridColumn:'span 2'}}><div className="fld-lbl"><i className="ti ti-lock" style={{fontSize:'10px'}}></i>Sold-to Customer</div><div className="fld-val">{docket.customerName}</div></div>
           <div className="fld fld-ro"><div className="fld-lbl"><i className="ti ti-lock" style={{fontSize:'10px'}}></i>Ship-to Site</div><div className="fld-val">{docket.site}</div></div>
           <div className="fld fld-ro"><div className="fld-lbl"><i className="ti ti-lock" style={{fontSize:'10px'}}></i>Contract No.</div><div className="fld-val">{docket.contractNo}</div></div>
-          <div className="fld"><div className="fld-lbl">Site Contact Person</div><input defaultValue={docket.siteContact} /></div>
-          <div className="fld"><div className="fld-lbl">Designation</div><input defaultValue="Mine Manager" /></div>
+          <div className="fld"><div className="fld-lbl">Site Contact Person</div><input defaultValue={docket.siteContact || 'Ramesh Patil'} disabled={isReadOnly} /></div>
+          <div className="fld"><div className="fld-lbl">Designation</div><input defaultValue="Mine Manager" disabled={isReadOnly} /></div>
         </div>
       </div>
 
@@ -127,36 +148,30 @@ export default function DocketSummary({ docket, onSubmit }) {
       <div id="sec-vehicle" style={{scrollMarginTop:'8px'}}>
         <div className="sec-h"><i className="ti ti-truck"></i>Vehicle &amp; Operator Info</div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'11px',marginBottom:'24px'}}>
-          <div className="fld selwrap"><div className="fld-lbl">Vehicle</div><select defaultValue={docket.vehicleId}><option>{docket.vehicleId}</option></select><i className="ti ti-chevron-down chev"></i></div>
+          <div className="fld selwrap"><div className="fld-lbl">Vehicle</div><select defaultValue={docket.vehicleId} disabled={isReadOnly}><option>{docket.vehicleId}</option></select><i className="ti ti-chevron-down chev"></i></div>
           <div className="fld fld-ro"><div className="fld-lbl"><i className="ti ti-lock" style={{fontSize:'10px'}}></i>Vehicle Type</div><div className="fld-val">{docket.vehicleType}</div></div>
-          <div className="fld selwrap" style={{gridColumn:'span 2'}}><div className="fld-lbl">Operators</div><select><option>{docket.operators.join(', ')}</option></select><i className="ti ti-chevron-down chev"></i></div>
-          <div className="fld selwrap"><div className="fld-lbl">Blaster / Shotfirer</div><select defaultValue={docket.shotfirer}><option>{docket.shotfirer}</option></select><i className="ti ti-chevron-down chev"></i></div>
-          <div className="fld selwrap"><div className="fld-lbl">Surveyor (optional)</div><select><option>Not assigned</option></select><i className="ti ti-chevron-down chev"></i></div>
+          <div className="fld selwrap" style={{gridColumn:'span 2'}}><div className="fld-lbl">Operators</div><select disabled={isReadOnly}><option>{docket.operators.join(', ')}</option></select><i className="ti ti-chevron-down chev"></i></div>
+          <div className="fld selwrap"><div className="fld-lbl">Blaster / Shotfirer</div><select defaultValue={docket.shotfirer} disabled={isReadOnly}><option>{docket.shotfirer}</option></select><i className="ti ti-chevron-down chev"></i></div>
+          <div className="fld selwrap"><div className="fld-lbl">Surveyor (optional)</div><select disabled={isReadOnly}><option>Not assigned</option></select><i className="ti ti-chevron-down chev"></i></div>
         </div>
       </div>
 
       {/* Products */}
       <div id="sec-products" style={{scrollMarginTop:'8px'}}>
-        <div className="sec-h" style={{justifyContent:'space-between'}}><span style={{display:'flex',alignItems:'center',gap:'8px'}}><i className="ti ti-package"></i>Products</span><button className="txtbtn"><i className="ti ti-plus" style={{fontSize:'15px'}}></i>Add Product</button></div>
+        <div className="sec-h" style={{justifyContent:'space-between'}}><span style={{display:'flex',alignItems:'center',gap:'8px'}}><i className="ti ti-package"></i>Products</span>{!isReadOnly && <button className="txtbtn"><i className="ti ti-plus" style={{fontSize:'15px'}}></i>Add Product</button>}</div>
         <div style={{border:'1px solid #E8EDF3',borderRadius:'11px',overflow:'hidden',background:'#fff'}}>
           <table className="tbl">
-            <thead><tr><th>Material No.</th><th>Class</th><th>Material Name</th><th style={{textAlign:'right'}}>Sched.</th><th style={{textAlign:'right'}}>Actual</th><th>UoM</th><th></th></tr></thead>
+            <thead><tr><th>Material Name</th><th style={{textAlign:'right'}}>Sched.</th><th style={{textAlign:'right'}}>Actual</th><th>UoM</th><th></th></tr></thead>
             <tbody>
               {docket.products.map(p => (
                 <tr key={p.matNo}>
-                  <td style={{fontWeight:700,color:'#1E3A5C',whiteSpace:'nowrap'}}>{p.matNo}</td>
-                  <td><span className={`cat-pill ${p.cls === 'BULK' ? 'cat-bulk' : 'cat-ispe'}`}>{p.cls}</span></td>
                   <td style={{fontWeight:600}}>{p.name}</td>
                   <td className="qty-sched">{p.scheduledQty}</td>
                   <td style={{textAlign:'right'}}>
-                    {p.cls === 'BULK' ? (
-                      <input className={`qty-in ${hasVariance ? 'amber' : ''}`} value={actualQty} onChange={handleActualChange}/>
-                    ) : (
-                      <input className="qty-in" defaultValue={p.actualQty || p.scheduledQty}/>
-                    )}
+                    <input className={`qty-in ${actualQuantities[p.matNo] != p.scheduledQty ? 'amber' : ''}`} value={actualQuantities[p.matNo] || ''} onChange={(e) => handleQtyChange(p.matNo, e.target.value)} disabled={isReadOnly}/>
                   </td>
                   <td style={{color:'#6B7280',fontWeight:600}}>{p.uom}</td>
-                  <td><button className="delx"><i className="ti ti-trash" style={{fontSize:'14px'}}></i></button></td>
+                  <td>{!isReadOnly && <button className="delx"><i className="ti ti-trash" style={{fontSize:'14px'}}></i></button>}</td>
                 </tr>
               ))}
             </tbody>
@@ -172,19 +187,26 @@ export default function DocketSummary({ docket, onSubmit }) {
 
       {/* Services */}
       <div id="sec-services" style={{scrollMarginTop:'8px',marginTop:'24px'}}>
-        <div className="sec-h" style={{justifyContent:'space-between'}}><span style={{display:'flex',alignItems:'center',gap:'8px'}}><i className="ti ti-tools"></i>Services</span><button className="txtbtn"><i className="ti ti-plus" style={{fontSize:'15px'}}></i>Add Service</button></div>
+        <div className="sec-h" style={{justifyContent:'space-between'}}><span style={{display:'flex',alignItems:'center',gap:'8px'}}><i className="ti ti-tools"></i>Services</span>{!isReadOnly && <button className="txtbtn"><i className="ti ti-plus" style={{fontSize:'15px'}}></i>Add Service</button>}</div>
         <div style={{border:'1px solid #E8EDF3',borderRadius:'11px',overflow:'hidden',background:'#fff'}}>
           <table className="tbl">
-            <thead><tr><th>Material No.</th><th>Service Name</th><th style={{textAlign:'right'}}>Sched.</th><th style={{textAlign:'right'}}>Actual</th><th>UoM</th><th></th></tr></thead>
+            <thead><tr><th>Service Name</th><th style={{textAlign:'right'}}>Sched.</th><th style={{textAlign:'right'}}>Actual</th><th>UoM</th><th></th></tr></thead>
             <tbody>
-              <tr>
-                <td style={{fontWeight:700,color:'#1E3A5C',whiteSpace:'nowrap'}}>SRV-901</td>
-                <td style={{fontWeight:600}}>Pump Charge Service</td>
-                <td className="qty-sched">1</td>
-                <td style={{textAlign:'right'}}><input className="qty-in" defaultValue="1"/></td>
-                <td style={{color:'#6B7280',fontWeight:600}}>HR</td>
-                <td><button className="delx"><i className="ti ti-trash" style={{fontSize:'14px'}}></i></button></td>
-              </tr>
+              {docket.services && docket.services.length > 0 ? (
+                docket.services.map((s, idx) => (
+                  <tr key={idx}>
+                    <td style={{fontWeight:600}}>{s.name}</td>
+                    <td className="qty-sched">{s.scheduledQty}</td>
+                    <td style={{textAlign:'right'}}><input className={`qty-in ${actualQuantities[s.matNo] != s.scheduledQty ? 'amber' : ''}`} value={actualQuantities[s.matNo] || ''} onChange={(e) => handleQtyChange(s.matNo, e.target.value)} disabled={isReadOnly}/></td>
+                    <td style={{color:'#6B7280',fontWeight:600}}>{s.uom}</td>
+                    <td>{!isReadOnly && <button className="delx"><i className="ti ti-trash" style={{fontSize:'14px'}}></i></button>}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" style={{textAlign:'center',color:'#9CA3AF',padding:'20px'}}>No services scheduled.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -193,7 +215,7 @@ export default function DocketSummary({ docket, onSubmit }) {
       {/* Notes */}
       <div style={{marginTop:'24px'}}>
         <div className="sec-h"><i className="ti ti-note"></i>Notes</div>
-        <textarea placeholder="Site observations, reasons for quantity variances, special equipment, safety notes…" style={{width:'100%',minHeight:'74px',border:'1.5px solid #E3E8EF',borderRadius:'10px',padding:'11px 13px',fontSize:'13px',color:'#1F2937',outline:'none',resize:'vertical',fontFamily:'inherit'}}></textarea>
+        <textarea placeholder="Site observations, reasons for quantity variances, special equipment, safety notes…" value={notes} onChange={(e) => setNotes(e.target.value)} disabled={isReadOnly} style={{width:'100%',minHeight:'74px',border:'1.5px solid #E3E8EF',borderRadius:'10px',padding:'11px 13px',fontSize:'13px',color:'#1F2937',outline:'none',resize:'vertical',fontFamily:'inherit', opacity: isReadOnly ? 0.7 : 1}}></textarea>
       </div>
 
       {/* Signature */}
@@ -212,7 +234,7 @@ export default function DocketSummary({ docket, onSubmit }) {
           {/* received by */}
           <div style={{border:'1.5px solid #E8EDF3',borderRadius:'12px',padding:'14px',background:'#fff'}}>
             <div style={{fontSize:'10px',fontWeight:800,color:'#98A2B2',textTransform:'uppercase',letterSpacing:'.5px'}}>Received By (Customer)</div>
-            <input placeholder="Enter receiver's name" disabled={!!docket.signature?.signatureData} value={receiverName} onChange={e => setReceiverName(e.target.value)} style={{width:'100%',border:'1.5px solid #E3E8EF',borderRadius:'8px',padding:'7px 10px',fontSize:'13px',fontWeight:600,color: docket.signature?.signatureData ? '#9CA3AF' : '#1F2937',outline:'none',marginTop:'6px',background: docket.signature?.signatureData ? '#F9FAFB' : '#fff'}}/>
+            <input placeholder="Enter receiver's name" disabled={isReadOnly || !!docket.signature?.signatureData} value={receiverName} onChange={e => setReceiverName(e.target.value)} style={{width:'100%',border:'1.5px solid #E3E8EF',borderRadius:'8px',padding:'7px 10px',fontSize:'13px',fontWeight:600,color: docket.signature?.signatureData ? '#9CA3AF' : '#1F2937',outline:'none',marginTop:'6px',background: docket.signature?.signatureData || isReadOnly ? '#F9FAFB' : '#fff'}}/>
             <div style={{position:'relative',height:'78px',borderRadius:'9px',background:'#fff',border:'1.5px dashed #C3CCD9',marginTop:'9px',overflow:'hidden',touchAction:'none'}}>
               {docket.signature?.signatureData ? (
                 <img src={docket.signature.signatureData} style={{width:'100%',height:'100%',objectFit:'contain',padding:'4px'}} alt="Customer Signature" />
@@ -237,7 +259,7 @@ export default function DocketSummary({ docket, onSubmit }) {
                 </>
               )}
             </div>
-            {!docket.signature?.signatureData && (
+            {!docket.signature?.signatureData && !isReadOnly && (
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:'8px'}}>
                 <span style={{fontSize:'10.5px',color:'#9CA3AF',fontWeight:600}}></span>
                 <button onClick={clearSignature} className="txtbtn" style={{fontSize:'11px',padding:'2px',cursor:'pointer'}}><i className="ti ti-eraser" style={{fontSize:'13px'}}></i>Clear</button>
@@ -247,8 +269,8 @@ export default function DocketSummary({ docket, onSubmit }) {
         </div>
         {/* submit button */}
         <div style={{marginTop: '20px', display: 'flex', justifyContent: 'flex-end'}}>
-          <button onClick={handleSubmit} disabled={isSubmitting || docket.status === 'submitted'} style={{padding: '12px 24px', background: docket.status === 'submitted' ? '#AAB4C2' : '#1E3A5C', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: docket.status === 'submitted' ? 'not-allowed' : 'pointer'}}>
-            {isSubmitting ? 'Submitting...' : docket.status === 'submitted' ? 'Already Submitted' : 'Submit Docket'}
+          <button onClick={handleSubmit} disabled={isSubmitting || docket.status === 'delivered' || docket.status === 'signed'} style={{padding: '12px 24px', background: (docket.status === 'delivered' || docket.status === 'signed') ? '#AAB4C2' : '#1E3A5C', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: (docket.status === 'delivered' || docket.status === 'signed') ? 'not-allowed' : 'pointer'}}>
+            {isSubmitting ? 'Submitting...' : (docket.status === 'delivered' || docket.status === 'signed') ? 'Already Submitted' : 'Submit Docket'}
           </button>
         </div>
       </div>

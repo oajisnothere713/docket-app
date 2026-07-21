@@ -68,11 +68,13 @@ input,select,textarea{font-family:inherit}
 .bcard-planned{border-left-color:#2E5390}
 .bcard-inprogress{border-left-color:#D97706;background:#FFFCF6}
 .bcard-delivered{border-left-color:#16A34A;background:#F6FCF8}
+.bcard-signed{border-left-color:#16A34A;background:#F6FCF8}
 .bcard-submitted{border-left-color:#9CA3AF}
 .sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .sdot-planned{background:#2E5390}
 .sdot-inprogress{background:#D97706}
 .sdot-delivered{background:#16A34A}
+.sdot-signed{background:#16A34A}
 .sdot-submitted{background:#9CA3AF}
 .statecell{display:flex;align-items:center;justify-content:center;height:100%;min-height:52px;font-size:10.5px;font-weight:700;border-radius:8px;border:1px dashed #DCE3EC;color:#AAB4C2;background:#FAFBFD}
 .vcol-head{background:#E3E9F1;border-right:2px solid #C9D2DE}

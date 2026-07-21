@@ -24,8 +24,9 @@ export const getSchedule = async (req, res) => {
           shotfirer: dd.shotfirerIds && dd.shotfirerIds.length > 0 ? dd.shotfirerIds[0] : 'Not assigned',
           scheduledStart: booking.startTime || '',
           customerName: booking.customerName || '',
-          contractNo: '',
+          contractNo: booking.contractId || '',
           signature: dd.signature,
+          notes: dd.notes || '',
           products: (dd.products || []).map(p => ({
             matNo: p.materialId,
             name: p.name,
@@ -33,6 +34,13 @@ export const getSchedule = async (req, res) => {
             scheduledQty: p.plannedQty,
             actualQty: p.actualQty,
             uom: p.uom
+          })),
+          services: (dd.services || []).map(s => ({
+            matNo: s.serviceId || s.materialId || '',
+            name: s.name,
+            scheduledQty: s.qty !== undefined ? s.qty : s.plannedQty,
+            actualQty: s.actualQty,
+            uom: s.uom
           }))
         });
       });
@@ -64,12 +72,25 @@ export const submitDocket = async (req, res) => {
     let updated = false;
     booking.deliveryDockets.forEach(dd => {
       if (dd.docketNumber === docketNo) {
-        dd.status = 'submitted';
+        if (signature && signature.isSigned) {
+          dd.status = 'signed';
+        } else {
+          dd.status = 'delivered';
+        }
         if (signature) dd.signature = signature;
         if (actualQuantities && dd.products) {
           dd.products.forEach(p => {
-             if (actualQuantities[p.materialId] !== undefined) {
-               p.actualQty = actualQuantities[p.materialId];
+             const key = p.materialId;
+             if (key && actualQuantities[key] !== undefined) {
+               p.actualQty = actualQuantities[key];
+             }
+          });
+        }
+        if (actualQuantities && dd.services) {
+          dd.services.forEach(s => {
+             const key = s.serviceId || s.materialId;
+             if (key && actualQuantities[key] !== undefined) {
+               s.actualQty = actualQuantities[key];
              }
           });
         }
