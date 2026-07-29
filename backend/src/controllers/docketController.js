@@ -108,3 +108,33 @@ export const submitDocket = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Start docket (change status from planned to inprogress)
+// @route   POST /api/dockets/:id/start
+export const startDocket = async (req, res) => {
+  try {
+    const docketNo = req.params.id;
+    const booking = await Booking.findOne({ 'deliveryDockets.docketNumber': docketNo });
+    if (!booking) return res.status(404).json({ message: 'Docket not found' });
+    
+    let updated = false;
+    booking.deliveryDockets.forEach(dd => {
+      if (dd.docketNumber === docketNo) {
+        if ((dd.status || '').toLowerCase() === 'planned') {
+          dd.status = 'inprogress';
+          updated = true;
+        }
+      }
+    });
+    
+    if (updated) {
+      await booking.save();
+      res.json({ success: true, status: 'inprogress' });
+    } else {
+      res.json({ success: false, message: 'Status was not planned or already updated' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+

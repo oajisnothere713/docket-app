@@ -45,8 +45,21 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const openDocket = (docket) => {
-    setSelectedDocket(docket);
+  const openDocket = async (docket) => {
+    let targetDocket = docket;
+    if (docket.status === 'planned') {
+      try {
+        const API_URL = import.meta.env.VITE_API_URL || '';
+        const res = await fetch(`${API_URL}/api/dockets/${docket._id}/start`, { method: 'POST' });
+        if (res.ok) {
+          targetDocket = { ...docket, status: 'inprogress' };
+          fetchDockets();
+        }
+      } catch (err) {
+        console.error('Failed to update docket status to inprogress:', err);
+      }
+    }
+    setSelectedDocket(targetDocket);
     setCurrentScreen('docket');
     setDocketPage('summary');
   };
