@@ -45,6 +45,19 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Responsive auto-scaling tablet bezel handler
+  useEffect(() => {
+    const handleFit = () => {
+      const el = document.getElementById('tabBezel');
+      if (!el) return;
+      const scale = Math.min(1, (window.innerHeight - 24) / 1102, (window.innerWidth - 24) / 802);
+      el.style.transform = `scale(${scale})`;
+    };
+    handleFit();
+    window.addEventListener('resize', handleFit);
+    return () => window.removeEventListener('resize', handleFit);
+  }, []);
+
   const openDocket = async (docket) => {
     let targetDocket = docket;
     if (docket.status === 'planned') {
@@ -70,9 +83,9 @@ function App() {
   };
 
   return (
-    <div style={{height:'100vh',width:'100%',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px',background:'radial-gradient(1200px 700px at 50% -10%,#D5DCE7,#C0C9D7)'}}>
-      <div style={{width:'800px',height:'calc(100vh - 40px)',maxHeight:'1040px',background:'#0B0F17',borderRadius:'44px',padding:'15px',boxShadow:'0 40px 90px -20px rgba(15,23,42,.55),inset 0 0 0 2px #23293A',display:'flex',flexDirection:'column'}}>
-        <div style={{position:'relative',width:'100%',flex:1,background:'#EEF2F7',borderRadius:'30px',overflow:'hidden',display:'flex',flexDirection:'column'}}>
+    <div style={{height:'100vh',width:'100vw',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',background:'radial-gradient(1200px 700px at 50% -10%,#D5DCE7,#C0C9D7)'}}>
+      <div id="tabBezel" style={{width:'800px',flexShrink:0,background:'#0B0F17',borderRadius:'44px',padding:'15px',boxShadow:'0 40px 90px -20px rgba(15,23,42,.55),inset 0 0 0 2px #23293A',transformOrigin:'center center'}}>
+        <div style={{position:'relative',width:'770px',height:'1040px',background:'#EEF2F7',borderRadius:'30px',overflow:'hidden',display:'flex',flexDirection:'column'}}>
           {/* front camera */}
           <div style={{position:'absolute',top:'14px',left:'50%',transform:'translateX(-50%)',width:'8px',height:'8px',borderRadius:'50%',background:'#1B2130',boxShadow:'inset 0 0 0 2px #2C3348',zIndex:40}}></div>
 
