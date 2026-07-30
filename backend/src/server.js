@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import connectDB from './config/db.js';
 import docketRoutes from './routes/docketRoutes.js';
+import fleetRoutes from './routes/fleetRoutes.js';
 
 // Load env vars
 dotenv.config();
@@ -18,6 +19,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/dockets', docketRoutes);
+app.use('/api/fleetstatuses', fleetRoutes);
 
 // Base route
 app.get('/', (req, res) => {
