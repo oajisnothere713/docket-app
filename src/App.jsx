@@ -20,6 +20,10 @@ function App() {
     fetch(`${API_URL}/api/dockets`)
       .then(res => res.json())
       .then(data => {
+        if (!Array.isArray(data)) {
+          console.error('Expected array for dockets, got:', data);
+          return;
+        }
         setDockets(data);
         setLoading(false);
         setSelectedDocket(prev => {
@@ -39,7 +43,13 @@ function App() {
     const API_URL = import.meta.env.VITE_API_URL || '';
     fetch(`${API_URL}/api/fleetstatuses`)
       .then(res => res.json())
-      .then(data => setFleetStatuses(data))
+      .then(data => {
+        if (!Array.isArray(data)) {
+          console.error('Expected array for fleet statuses, got:', data);
+          return;
+        }
+        setFleetStatuses(data);
+      })
       .catch(err => console.error('Failed to fetch fleet statuses:', err));
   };
 
