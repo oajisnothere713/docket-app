@@ -11,6 +11,7 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState('schedule');
   const [docketPage, setDocketPage] = useState('summary');
   const [dockets, setDockets] = useState([]);
+  const [fleetStatuses, setFleetStatuses] = useState([]);
   const [selectedDocket, setSelectedDocket] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -34,12 +35,22 @@ function App() {
       });
   };
 
+  const fetchFleetStatuses = () => {
+    const API_URL = import.meta.env.VITE_API_URL || '';
+    fetch(`${API_URL}/api/fleetstatuses`)
+      .then(res => res.json())
+      .then(data => setFleetStatuses(data))
+      .catch(err => console.error('Failed to fetch fleet statuses:', err));
+  };
+
   useEffect(() => {
     fetchDockets();
+    fetchFleetStatuses();
     
     // Poll for live updates every 5 seconds
     const interval = setInterval(() => {
       fetchDockets();
+      fetchFleetStatuses();
     }, 5000);
     
     return () => clearInterval(interval);
@@ -92,7 +103,7 @@ function App() {
           {currentScreen === 'schedule' && (
             <div data-screen-label="Schedule" style={{display:'flex',flexDirection:'column',height:'100%',minHeight:0}}>
               <Header />
-              <ScheduleScreen dockets={dockets} loading={loading} onOpenDocket={openDocket} />
+              <ScheduleScreen dockets={dockets} fleetStatuses={fleetStatuses} loading={loading} onOpenDocket={openDocket} />
               <BottomNav />
             </div>
           )}
