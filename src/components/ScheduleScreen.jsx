@@ -217,7 +217,9 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
 
                         return (
                           <div key={i} className="grid-cell" style={{background:'#fff'}}>
-                            {dayDockets.length > 0 ? (
+                            {loading ? (
+                              <div className="skeleton-box"></div>
+                            ) : dayDockets.length > 0 ? (
                               <div style={{display:'flex', flexDirection:'column', gap:'6px', height:'100%'}}>
                                 {dayDockets.map(doc => renderBookingCard(doc, true))}
                               </div>
@@ -244,7 +246,11 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
             </div>
 
             {loading ? (
-              <div style={{textAlign:'center', padding:'20px'}}>Loading...</div>
+              <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
+                <div className="skeleton-card"></div>
+                <div className="skeleton-card"></div>
+                <div className="skeleton-card"></div>
+              </div>
             ) : (
               <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
                 {FLEET.map(veh => {
