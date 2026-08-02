@@ -39,6 +39,7 @@ const FLEET = [
 export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, onOpenDocket }) {
   const [viewMode, setViewMode] = useState('grid');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [showWeekend, setShowWeekend] = useState(false);
   
   // Ownership modal state
   const [selectedDocketToOpen, setSelectedDocketToOpen] = useState(null);
@@ -62,8 +63,8 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
     setCurrentDate(new Date());
   };
 
-  // Generate the 7 days of the week (Mon-Sun)
-  const gridDays = Array.from({ length: 7 }).map((_, i) => {
+  // Generate the days of the week based on toggle
+  const gridDays = Array.from({ length: showWeekend ? 7 : 5 }).map((_, i) => {
     const d = new Date(weekInfo.start);
     d.setDate(d.getDate() + i);
     return d;
@@ -152,6 +153,28 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
         <button onClick={nextWeek} style={{width:'34px', height:'34px', borderRadius:'8px', border:'1.5px solid #E3E8EF', display:'flex', alignItems:'center', justifyContent:'center', color:'#4B5563', cursor:'pointer'}}><i className="ti ti-chevron-right" style={{fontSize:'17px'}}></i></button>
         <button onClick={goToToday} className="btn-ghost" style={{padding:'7px 13px', fontSize:'12px', cursor:'pointer', background:isTodaySelected ? '#E8EDF3' : 'transparent'}}>Today</button>
         
+        {/* Weekend Toggle */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px', 
+          background: '#fff', border: '1.5px solid #E3E8EF', borderRadius: '100px', 
+          padding: '4px 6px 4px 12px', cursor: 'pointer', marginLeft: '6px'
+        }} onClick={() => setShowWeekend(!showWeekend)}>
+          <span style={{fontSize: '12px', fontWeight: 700, color: '#1E3A5C'}}>
+            {showWeekend ? 'Mon–Sun' : 'Mon–Fri'}
+          </span>
+          <div style={{
+            width: '32px', height: '18px', borderRadius: '100px', 
+            background: showWeekend ? '#E8590C' : '#CBD5E1', 
+            position: 'relative', transition: 'background 0.2s'
+          }}>
+            <div style={{
+              width: '14px', height: '14px', borderRadius: '50%', background: '#fff', 
+              position: 'absolute', top: '2px', left: showWeekend ? '16px' : '2px', 
+              transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.15)'
+            }}></div>
+          </div>
+        </div>
+
         {/* layout toggle */}
         <div style={{display:'flex', background:'#F1F5FA', borderRadius:'9px', padding:'3px', gap:'2px'}}>
           <button onClick={() => setViewMode('grid')} style={{cursor:'pointer', border:'none', width:'32px', height:'28px', borderRadius:'6px', display:'flex', alignItems:'center', justifyContent:'center', color:viewMode === 'grid' ? '#1E3A5C' : '#8A97A8', background:viewMode === 'grid' ? '#fff' : 'transparent', boxShadow:viewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'}}><i className="ti ti-layout-grid" style={{fontSize:'16px'}}></i></button>
@@ -239,61 +262,62 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
           </div>
         ) : (
           /* Agenda View */
-          <>
-            <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'12px'}}>
-              <span style={{fontSize:'15px', fontWeight:800, color:'#111827'}}>{formatDate(currentDate)}</span>
-              {isTodaySelected && <span className="chip chip-navy">Today</span>}
-            </div>
+          <div style={{display:'flex', flexDirection:'column', gap:'30px'}}>
+            {gridDays.map((d, index) => {
+              const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
+              const dayEnd = new Date(d); dayEnd.setHours(23,59,59,999);
+              const isToday = isTodayDate(d);
+              
+              const dayDocketsAll = dockets.filter(doc => {
+                 if (!doc.date) return false;
+                 const docDate = new Date(doc.date);
+                 return docDate >= dayStart && docDate <= dayEnd;
+              });
 
-            {loading ? (
-              <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
-                <div className="skeleton-card"></div>
-                <div className="skeleton-card"></div>
-                <div className="skeleton-card"></div>
-              </div>
-            ) : (
-              <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
-                {FLEET.map(veh => {
-                  const dayStart = new Date(currentDate); dayStart.setHours(0,0,0,0);
-                  const dayEnd = new Date(currentDate); dayEnd.setHours(23,59,59,999);
-                  const vehDockets = dockets.filter(doc => {
-                    if (!doc.date) return false;
-                    const docDate = new Date(doc.date);
-                    return doc.vehicleId === veh.id && docDate >= dayStart && docDate <= dayEnd;
-                  });
-
-                  if (vehDockets.length === 0) return null;
-
-                  const isOwn = veh.id === YOUR_VEHICLE;
-                  
-                  return (
-                    <div key={veh.id} className={!isOwn ? 'dimmed-vehicle' : ''}>
-                      <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px', padding:'0 2px'}}>
-                        <span style={{fontSize:'12.5px', fontWeight:800, color:'#1F2937'}}>{veh.id}</span>
-                        {isOwn && <span className="you-badge">YOUR VEHICLE</span>}
-                        <span style={{fontSize:'10.5px', color:'#9CA3AF', fontWeight:600}}>{veh.type}</span>
-                      </div>
-                      <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
-                        {vehDockets.map(doc => renderBookingCard(doc, false))}
-                      </div>
-                    </div>
-                  );
-                })}
-                
-                {dockets.filter(doc => {
-                   const dayStart = new Date(currentDate); dayStart.setHours(0,0,0,0);
-                   const dayEnd = new Date(currentDate); dayEnd.setHours(23,59,59,999);
-                   const docDate = new Date(doc.date);
-                   return docDate >= dayStart && docDate <= dayEnd;
-                }).length === 0 && (
-                  <div style={{textAlign:'center', padding:'40px 20px', color:'#8A97A8', fontSize:'13px', background:'#fff', borderRadius:'12px', border:'1px dashed #C3CCD9'}}>
-                    <i className="ti ti-calendar-off" style={{fontSize:'24px', marginBottom:'8px', display:'block', color:'#AAB4C2'}}></i>
-                    No dockets scheduled for this day.
+              return (
+                <div key={index}>
+                  <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'12px'}}>
+                    <span style={{fontSize:'15px', fontWeight:800, color:'#111827'}}>{formatDate(d)}</span>
+                    {isToday && <span className="chip chip-navy">Today</span>}
                   </div>
-                )}
-              </div>
-            )}
-          </>
+
+                  {loading ? (
+                    <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
+                      <div className="skeleton-card"></div>
+                      <div className="skeleton-card"></div>
+                    </div>
+                  ) : dayDocketsAll.length === 0 ? (
+                    <div style={{textAlign:'center', padding:'30px 20px', color:'#8A97A8', fontSize:'13px', background:'#fff', borderRadius:'12px', border:'1px dashed #C3CCD9'}}>
+                      <i className="ti ti-calendar-off" style={{fontSize:'22px', marginBottom:'8px', display:'block', color:'#AAB4C2'}}></i>
+                      No dockets scheduled for this day.
+                    </div>
+                  ) : (
+                    <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
+                      {FLEET.map(veh => {
+                        const vehDockets = dayDocketsAll.filter(doc => doc.vehicleId === veh.id);
+                        if (vehDockets.length === 0) return null;
+
+                        const isOwn = veh.id === YOUR_VEHICLE;
+                        
+                        return (
+                          <div key={veh.id} className={!isOwn ? 'dimmed-vehicle' : ''}>
+                            <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px', padding:'0 2px'}}>
+                              <span style={{fontSize:'12.5px', fontWeight:800, color:'#1F2937'}}>{veh.id}</span>
+                              {isOwn && <span className="you-badge">YOUR VEHICLE</span>}
+                              <span style={{fontSize:'10.5px', color:'#9CA3AF', fontWeight:600}}>{veh.type}</span>
+                            </div>
+                            <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+                              {vehDockets.map(doc => renderBookingCard(doc, false))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
