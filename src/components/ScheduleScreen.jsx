@@ -62,8 +62,8 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
     setCurrentDate(new Date());
   };
 
-  // Generate the 5 days of the week (Mon-Fri)
-  const gridDays = Array.from({ length: 5 }).map((_, i) => {
+  // Generate the 7 days of the week (Mon-Sun)
+  const gridDays = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date(weekInfo.start);
     d.setDate(d.getDate() + i);
     return d;
