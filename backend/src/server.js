@@ -4,6 +4,7 @@ import cors from 'cors';
 import connectDB from './config/db.js';
 import docketRoutes from './routes/docketRoutes.js';
 import fleetRoutes from './routes/fleetRoutes.js';
+import materialRoutes from './routes/materialRoutes.js';
 
 // Load env vars
 dotenv.config();
@@ -27,6 +28,7 @@ app.use('/api', async (req, res, next) => {
 // Routes
 app.use('/api/dockets', docketRoutes);
 app.use('/api/fleetstatuses', fleetRoutes);
+app.use('/api/materials', materialRoutes);
 
 // Base route
 app.get('/', (req, res) => {
