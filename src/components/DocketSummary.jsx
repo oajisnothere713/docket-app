@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { formatDisplayDate } from '../utils/dateUtils';
+import CustomSelect from './CustomSelect';
 
 const FALLBACK_MATERIALS = [
   { id: 'MAT-EMULSION', name: 'Bulk Emulsion', cls: 'BULK', uom: 't' },
@@ -10,13 +11,21 @@ const FALLBACK_MATERIALS = [
   { id: 'MAT-DCORD', name: 'Detonating Cord 5 g/m', cls: 'IS&PE', uom: 'm' }
 ];
 
-const SERVICE_CATALOG = [
-  { id: 'SVC-SETUP', name: 'Site Service & Setup', cls: 'SERVICE', uom: 'ea' },
-  { id: 'SVC-CREW', name: 'Blast Crew Support', cls: 'SERVICE', uom: 'hr' },
-  { id: 'SVC-CHARGE', name: 'Hole Charging & Priming', cls: 'SERVICE', uom: 'ea' },
-  { id: 'SVC-STEM', name: 'Stemming & Tie-up', cls: 'SERVICE', uom: 'hr' },
-  { id: 'SVC-STANDBY', name: 'Equipment Standby', cls: 'SERVICE', uom: 'hr' }
+const SERVICES = [
+  { id: 'SVC-SETUP', name: 'Site Service & Setup', uom: 'ea' },
+  { id: 'SVC-BMDOP', name: 'BMD Operation Charge', uom: 'hr' },
+  { id: 'SVC-FIXED', name: 'Fixed Plant Charge', uom: 'day' },
+  { id: 'SVC-BORE', name: 'Bore Tracking / Hole Survey', uom: 'm' },
+  { id: 'SVC-MARK', name: 'Blast Mark-Out', uom: 'm' },
+  { id: 'SVC-CLEAR', name: 'Blast Clearance & Guarding', uom: 'hr' },
+  { id: 'SVC-DTH', name: 'Down-the-hole Loading', uom: 'hr' },
+  { id: 'SVC-STEM', name: 'Stemming Service', uom: 'hr' },
+  { id: 'SVC-DESIGN', name: 'Blast Design & Consultancy', uom: 'ea' },
+  { id: 'SVC-FUME', name: 'Post-Blast Fume Clearance', uom: 'hr' },
+  { id: 'SVC-MMU', name: 'MMU Operation', uom: 'hr' }
 ];
+
+const SERVICE_CATALOG = SERVICES.map(s => ({ ...s, cls: 'SERVICE' }));
 
 let rowCounter = 0;
 const nextRowId = (prefix) => `${prefix}-${Date.now()}-${++rowCounter}`;
@@ -30,6 +39,14 @@ function toEditableItems(items, defaultCls) {
     scheduledQty: item.scheduledQty ?? 0,
     actualQty: item.actualQty !== undefined && item.actualQty !== null ? item.actualQty : (item.scheduledQty ?? 0),
     uom: item.uom || (defaultCls === 'SERVICE' ? 'ea' : 't')
+  }));
+}
+
+function serializeItems(items) {
+  return items.map(({ _rowId, ...rest }) => ({
+    ...rest,
+    scheduledQty: Number(rest.scheduledQty ?? 0),
+    actualQty: Number(rest.actualQty === '' ? 0 : rest.actualQty ?? 0)
   }));
 }
 
@@ -84,22 +101,24 @@ function AddLineItemPanel({ itemLabel, catalog, defaultCls, defaultUom, onAdd, o
     });
   };
 
+  const selectOptions = [
+    ...catalog.map(item => ({ value: item.id, label: item.name, badge: item.uom })),
+    { value: '__custom__', label: `+ Custom ${itemLabel}…`, isAction: true }
+  ];
+
   return (
     <div style={{marginTop:'10px',background:'#F8FAFC',border:'1.5px solid #D8E3F0',borderRadius:'11px',padding:'12px 14px',animation:'pop .15s ease'}}>
       <div style={{fontSize:'11px',fontWeight:800,color:'#1E3A5C',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:'10px'}}>
         Add {itemLabel}
       </div>
-      <div style={{display:'grid',gridTemplateColumns: isCustom ? '1.4fr 1.2fr .8fr .7fr' : '2fr .8fr .7fr',gap:'9px',alignItems:'end'}}>
-        <div className="fld selwrap">
-          <div className="fld-lbl">{itemLabel}</div>
-          <select value={selectedId} onChange={(e) => handleSelectChange(e.target.value)}>
-            {catalog.map(item => (
-              <option key={item.id} value={item.id}>{item.name} ({item.uom})</option>
-            ))}
-            <option value="__custom__">+ Custom {itemLabel}…</option>
-          </select>
-          <i className="ti ti-chevron-down chev"></i>
-        </div>
+      <div style={{display:'grid',gridTemplateColumns: isCustom ? '1.4fr 1.2fr .75fr .65fr' : '2.2fr .8fr .65fr',gap:'9px',alignItems:'end'}}>
+        <CustomSelect
+          label={itemLabel}
+          value={selectedId}
+          options={selectOptions}
+          onChange={handleSelectChange}
+          searchable
+        />
         {isCustom && (
           <div className="fld">
             <div className="fld-lbl">Name</div>
@@ -182,8 +201,22 @@ export default function DocketSummary({ docket, onSubmit }) {
     setter(prev => prev.map(item => (item._rowId === rowId ? { ...item, actualQty: val } : item)));
   };
 
-  const removeRow = (setter, rowId) => {
-    setter(prev => prev.filter(item => item._rowId !== rowId));
+  const handleAddProduct = (item) => {
+    setProducts(prev => [...prev, item]);
+    setShowAddProduct(false);
+  };
+
+  const handleRemoveProduct = (rowId) => {
+    setProducts(prev => prev.filter(item => item._rowId !== rowId));
+  };
+
+  const handleAddService = (item) => {
+    setServices(prev => [...prev, item]);
+    setShowAddService(false);
+  };
+
+  const handleRemoveService = (rowId) => {
+    setServices(prev => prev.filter(item => item._rowId !== rowId));
   };
 
   const startDrawing = (e) => {
@@ -232,16 +265,8 @@ export default function DocketSummary({ docket, onSubmit }) {
     setSubmitError(null);
     try {
       const API_URL = import.meta.env.VITE_API_URL || '';
-      const cleanProducts = products.map(({ _rowId, ...rest }) => ({
-        ...rest,
-        scheduledQty: Number(rest.scheduledQty ?? 0),
-        actualQty: Number(rest.actualQty === '' ? 0 : rest.actualQty ?? 0)
-      }));
-      const cleanServices = services.map(({ _rowId, ...rest }) => ({
-        ...rest,
-        scheduledQty: Number(rest.scheduledQty ?? 0),
-        actualQty: Number(rest.actualQty === '' ? 0 : rest.actualQty ?? 0)
-      }));
+      const cleanProducts = serializeItems(products);
+      const cleanServices = serializeItems(services);
       const actualQuantities = Object.fromEntries(
         [...cleanProducts, ...cleanServices]
           .filter(item => item.matNo)
@@ -351,7 +376,7 @@ export default function DocketSummary({ docket, onSubmit }) {
                     <td style={{color:'#6B7280',fontWeight:600}}>{p.uom}</td>
                     <td>
                       {!isReadOnly && (
-                        <button type="button" className="delx" onClick={() => removeRow(setProducts, p._rowId)}>
+                        <button type="button" className="delx" onClick={() => handleRemoveProduct(p._rowId)}>
                           <i className="ti ti-trash" style={{fontSize:'14px'}}></i>
                         </button>
                       )}
@@ -372,10 +397,7 @@ export default function DocketSummary({ docket, onSubmit }) {
             catalog={materialCatalog}
             defaultCls="BULK"
             defaultUom="t"
-            onAdd={(item) => {
-              setProducts(prev => [...prev, item]);
-              setShowAddProduct(false);
-            }}
+            onAdd={handleAddProduct}
             onCancel={() => setShowAddProduct(false)}
           />
         )}
@@ -417,7 +439,7 @@ export default function DocketSummary({ docket, onSubmit }) {
                     <td style={{color:'#6B7280',fontWeight:600}}>{s.uom}</td>
                     <td>
                       {!isReadOnly && (
-                        <button type="button" className="delx" onClick={() => removeRow(setServices, s._rowId)}>
+                        <button type="button" className="delx" onClick={() => handleRemoveService(s._rowId)}>
                           <i className="ti ti-trash" style={{fontSize:'14px'}}></i>
                         </button>
                       )}
@@ -438,10 +460,7 @@ export default function DocketSummary({ docket, onSubmit }) {
             catalog={SERVICE_CATALOG}
             defaultCls="SERVICE"
             defaultUom="ea"
-            onAdd={(item) => {
-              setServices(prev => [...prev, item]);
-              setShowAddService(false);
-            }}
+            onAdd={handleAddService}
             onCancel={() => setShowAddService(false)}
           />
         )}
