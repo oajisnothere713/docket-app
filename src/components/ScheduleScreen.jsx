@@ -1,51 +1,135 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { toDateKey, parseLocalDate } from '../utils/dateUtils';
 
-// Helper to format dates
 const formatDate = (date) => {
-  const d = new Date(date);
+  const d = parseLocalDate(date);
   return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
 };
 
 const getWeekRange = (date) => {
   const d = new Date(date);
   const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday start
   const start = new Date(d.setDate(diff));
-  
+
   const end = new Date(start);
   end.setDate(start.getDate() + 6); // Monday to Sunday
-  
+
   const startStr = start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   const endStr = end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  
-  // Calculate week number
+
   const firstDayOfYear = new Date(start.getFullYear(), 0, 1);
   const pastDaysOfYear = (start - firstDayOfYear) / 86400000;
   const weekNum = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
-  
+
   return { label: `${startStr} – ${endStr}`, weekNum, start, end };
 };
 
-const FLEET = [
-  { id: 'MH-12-BMD-01', group: 'BMD Trucks', type: 'Bulk Mix Truck', ops: 'Ramesh Patil, Anil More', status: 'Available' },
-  { id: 'MH-12-BMD-02', group: 'BMD Trucks', type: 'Bulk Mix Truck', ops: 'Ashok Kumar, Dinesh Rao', status: 'Available' },
-  { id: 'MH-12-BMD-03', group: 'BMD Trucks', type: 'Bulk Mix Truck', ops: 'Vikram Soni, Sanjay Mishra', status: 'Off Shift' },
-  { id: 'MH-12-BCV-01', group: 'Blast Crew Vehicles', type: 'Blast Crew Cab', ops: 'Mahesh Verma', status: 'Available' },
-  { id: 'MH-12-BCV-02', group: 'Blast Crew Vehicles', type: 'Blast Crew Cab', ops: 'Prakash Jadhav', status: 'Maintenance' },
-  { id: 'MH-12-SVY-01', group: 'Support Trucks', type: 'Survey Vehicle', ops: '', status: 'Available' },
-  { id: 'MH-12-SPT-01', group: 'Support Trucks', type: 'Ancillary Support', ops: '', status: 'Available' }
-];
+const KNOWN_FLEET_META = {
+  'MH-12-BMD-01': { group: 'BMD Trucks', type: 'Bulk Mix Truck', ops: 'Ramesh Patil, Anil More' },
+  'MH-12-BMD-02': { group: 'BMD Trucks', type: 'Bulk Mix Truck', ops: 'Ashok Kumar, Dinesh Rao' },
+  'MH-12-BMD-03': { group: 'BMD Trucks', type: 'Bulk Mix Truck', ops: 'Vikram Soni, Sanjay Mishra' },
+  'MH-12-BCV-01': { group: 'Blast Crew Vehicles', type: 'Blast Crew Cab', ops: 'Mahesh Verma' },
+  'MH-12-BCV-02': { group: 'Blast Crew Vehicles', type: 'Blast Crew Cab', ops: 'Prakash Jadhav' },
+  'MH-12-SVY-01': { group: 'Support Trucks', type: 'Survey Vehicle', ops: '' },
+  'MH-12-SPT-01': { group: 'Support Trucks', type: 'Ancillary Support', ops: '' }
+};
 
-export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, onOpenDocket }) {
+const GROUP_ORDER = ['BMD Trucks', 'Blast Crew Vehicles', 'Support Trucks', 'Other Vehicles'];
+
+function classifyVehicle(id, vehicleDockets) {
+  const known = KNOWN_FLEET_META[id];
+  const opsFromDockets = [...new Set(vehicleDockets.flatMap(d => d.operators || []).filter(Boolean))].join(', ');
+
+  if (known) {
+    return {
+      id,
+      group: known.group,
+      type: known.type,
+      ops: opsFromDockets || known.ops
+    };
+  }
+
+  let group = 'Other Vehicles';
+  let type = vehicleDockets[0]?.vehicleType || 'Fleet Vehicle';
+
+  if (/^MMU/i.test(id)) {
+    group = 'BMD Trucks';
+    type = 'Mobile Mfg. Unit';
+  } else if (/BMD/i.test(id)) {
+    group = 'BMD Trucks';
+    type = 'Bulk Mix Truck';
+  } else if (/BCV/i.test(id)) {
+    group = 'Blast Crew Vehicles';
+    type = 'Blast Crew Cab';
+  } else if (/SVY/i.test(id)) {
+    group = 'Support Trucks';
+    type = 'Survey Vehicle';
+  } else if (/SPT/i.test(id)) {
+    group = 'Support Trucks';
+    type = 'Ancillary Support';
+  }
+
+  return { id, group, type, ops: opsFromDockets };
+}
+
+function vehicleSortRank(id) {
+  if (/^MMU/i.test(id)) return 0;
+  if (/^MH-/i.test(id)) return 1;
+  if (id === 'Unknown') return 3;
+  return 2;
+}
+
+function buildFleetList(fleetStatuses, dockets) {
+  const docketsByVehicle = new Map();
+  for (const doc of dockets) {
+    const vid = doc.vehicleId || 'Unknown';
+    if (!docketsByVehicle.has(vid)) {
+      docketsByVehicle.set(vid, []);
+    }
+    docketsByVehicle.get(vid).push(doc);
+  }
+
+  const idSet = new Set();
+  for (const doc of fleetStatuses) {
+    if (doc?.status && typeof doc.status === 'object') {
+      for (const vid of Object.keys(doc.status)) {
+        if (vid) idSet.add(vid);
+      }
+    }
+  }
+  for (const vid of docketsByVehicle.keys()) {
+    idSet.add(vid);
+  }
+
+  // Fallback to default fleet structure only before data arrives or if DB has zero vehicles
+  if (idSet.size === 0) {
+    for (const vid of Object.keys(KNOWN_FLEET_META)) {
+      idSet.add(vid);
+    }
+  }
+
+  return Array.from(idSet)
+    .map(vid => classifyVehicle(vid, docketsByVehicle.get(vid) || []))
+    .sort((a, b) => {
+      const rankDiff = vehicleSortRank(a.id) - vehicleSortRank(b.id);
+      if (rankDiff !== 0) return rankDiff;
+      return a.id.localeCompare(b.id, undefined, { numeric: true });
+    });
+}
+
+export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, apiError, onOpenDocket }) {
   const [viewMode, setViewMode] = useState('grid');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showWeekend, setShowWeekend] = useState(false);
-  
+
   // Ownership modal state
   const [selectedDocketToOpen, setSelectedDocketToOpen] = useState(null);
 
   const weekInfo = getWeekRange(currentDate);
   const YOUR_VEHICLE = 'MH-12-BMD-01';
+
+  const fleetList = useMemo(() => buildFleetList(fleetStatuses, dockets), [fleetStatuses, dockets]);
 
   const prevWeek = () => {
     const newDate = new Date(currentDate);
@@ -63,7 +147,6 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
     setCurrentDate(new Date());
   };
 
-  // Generate the days of the week based on toggle
   const gridDays = Array.from({ length: showWeekend ? 7 : 5 }).map((_, i) => {
     const d = new Date(weekInfo.start);
     d.setDate(d.getDate() + i);
@@ -71,18 +154,13 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
   });
 
   const getVehicleStatusForDate = (vehicleId, dateObj) => {
-    // Format dateObj to YYYY-MM-DD local time to match db format
-    const year = dateObj.getFullYear();
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
-    
+    const dateStr = toDateKey(dateObj);
     for (const doc of fleetStatuses) {
       if (doc.status && doc.status[vehicleId] && doc.status[vehicleId][dateStr]) {
-        return doc.status[vehicleId][dateStr].status;
+        return doc.status[vehicleId][dateStr];
       }
     }
-    return 'Available';
+    return { status: 'Available' };
   };
 
   const handleDocketClick = (docket) => {
@@ -100,13 +178,14 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
     }
   };
 
-  const isTodayDate = (dateObj) => new Date().toDateString() === dateObj.toDateString();
+  const isTodayDate = (dateObj) => toDateKey(new Date()) === toDateKey(dateObj);
   const isTodaySelected = isTodayDate(currentDate);
 
   const renderBookingCard = (docket, compact = false) => {
-    const statusColor = docket.status === 'inprogress' ? 'amber' : docket.status === 'planned' ? 'navy' : docket.status === 'delivered' || docket.status === 'signed' ? 'green' : 'grey';
-    const statusDotColor = docket.status === 'inprogress' ? '#D97706' : docket.status === 'planned' ? '#2E5390' : docket.status === 'delivered' || docket.status === 'signed' ? '#16A34A' : '#9CA3AF';
-    
+    const status = (docket.status || 'planned').toLowerCase();
+    const statusColor = status === 'inprogress' ? 'amber' : status === 'planned' ? 'navy' : status === 'delivered' || status === 'signed' ? 'green' : 'grey';
+    const statusDotColor = status === 'inprogress' ? '#D97706' : status === 'planned' ? '#2E5390' : status === 'delivered' || status === 'signed' ? '#16A34A' : '#9CA3AF';
+
     return (
       <div key={docket._id} onClick={() => handleDocketClick(docket)} style={{
         background:'#fff', borderLeft:`3px solid ${statusDotColor}`, borderTop:'1px solid #E4E9F0', borderRight:'1px solid #E4E9F0', borderBottom:'1px solid #E4E9F0', borderRadius:'6px', padding: compact ? '8px' : '12px', cursor:'pointer', height:'100%', position:'relative', transition:'box-shadow 0.2s', boxShadow:'0 1px 2px rgba(0,0,0,0.03)'
@@ -125,7 +204,7 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
               <div style={{display:'flex', alignItems:'center', gap:'8px', justifyContent:'space-between'}}>
                 <span style={{fontSize:'14px', fontWeight:800, color:'#1E3A5C'}}>{docket.blastNo}</span>
                 <span className={`chip chip-${statusColor}`}>
-                  {docket.status === 'inprogress' ? 'In Progress' : docket.status.charAt(0).toUpperCase() + docket.status.slice(1)}
+                  {status === 'inprogress' ? 'In Progress' : status.charAt(0).toUpperCase() + status.slice(1)}
                 </span>
               </div>
               <div style={{fontSize:'12px', fontWeight:700, color:'#374151', marginTop:'5px'}}><i className="ti ti-map-pin" style={{fontSize:'13px', color:'#B0B8C4'}}></i> {docket.site}</div>
@@ -152,24 +231,24 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
         </div>
         <button onClick={nextWeek} style={{width:'34px', height:'34px', borderRadius:'8px', border:'1.5px solid #E3E8EF', display:'flex', alignItems:'center', justifyContent:'center', color:'#4B5563', cursor:'pointer'}}><i className="ti ti-chevron-right" style={{fontSize:'17px'}}></i></button>
         <button onClick={goToToday} className="btn-ghost" style={{padding:'7px 13px', fontSize:'12px', cursor:'pointer', background:isTodaySelected ? '#E8EDF3' : 'transparent'}}>Today</button>
-        
+
         {/* Weekend Toggle */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: '8px', 
-          background: '#fff', border: '1.5px solid #E3E8EF', borderRadius: '100px', 
+          display: 'flex', alignItems: 'center', gap: '8px',
+          background: '#fff', border: '1.5px solid #E3E8EF', borderRadius: '100px',
           padding: '4px 6px 4px 12px', cursor: 'pointer', marginLeft: '6px'
         }} onClick={() => setShowWeekend(!showWeekend)}>
           <span style={{fontSize: '12px', fontWeight: 700, color: '#1E3A5C'}}>
             {showWeekend ? 'Mon–Sun' : 'Mon–Fri'}
           </span>
           <div style={{
-            width: '32px', height: '18px', borderRadius: '100px', 
-            background: showWeekend ? '#E8590C' : '#CBD5E1', 
+            width: '32px', height: '18px', borderRadius: '100px',
+            background: showWeekend ? '#E8590C' : '#CBD5E1',
             position: 'relative', transition: 'background 0.2s'
           }}>
             <div style={{
-              width: '14px', height: '14px', borderRadius: '50%', background: '#fff', 
-              position: 'absolute', top: '2px', left: showWeekend ? '16px' : '2px', 
+              width: '14px', height: '14px', borderRadius: '50%', background: '#fff',
+              position: 'absolute', top: '2px', left: showWeekend ? '16px' : '2px',
               transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.15)'
             }}></div>
           </div>
@@ -183,7 +262,13 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
       </div>
 
       <div style={{flex:1, overflow:'auto', minHeight:0, background:'#F4F7FB', padding:'14px 16px'}}>
-        
+        {apiError && (
+          <div style={{marginBottom:'12px', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:'9px', padding:'10px 13px', display:'flex', alignItems:'center', gap:'9px', color:'#991B1B', fontSize:'12px', fontWeight:600}}>
+            <i className="ti ti-alert-circle" style={{fontSize:'17px', color:'#DC2626', flexShrink:0}}></i>
+            <span>Unable to load live schedule data ({apiError}).</span>
+          </div>
+        )}
+
         {viewMode === 'grid' ? (
           <div className="grid-container">
             {/* Header Row */}
@@ -203,12 +288,12 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
             </div>
 
             {/* Matrix Body grouped by category */}
-            {['BMD Trucks', 'Blast Crew Vehicles', 'Support Trucks'].map(group => {
-              const groupVehicles = FLEET.filter(v => v.group === group);
+            {GROUP_ORDER.map(group => {
+              const groupVehicles = fleetList.filter(v => v.group === group);
               if (groupVehicles.length === 0) return null;
-              
+
               const groupIcon = group === 'BMD Trucks' ? 'ti-truck' : group === 'Blast Crew Vehicles' ? 'ti-users' : 'ti-tool';
-              
+
               return (
                 <div key={group}>
                   <div className="grid-row grid-group-header">
@@ -225,18 +310,18 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
                         <div className="veh-type">{veh.type}</div>
                         {veh.ops && <div className="veh-ops">{veh.ops}</div>}
                       </div>
-                      
+
                       {gridDays.map((d, i) => {
-                        // Find docket for this vehicle on this day
-                        const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
-                        const dayEnd = new Date(d); dayEnd.setHours(23,59,59,999);
+                        const dayKey = toDateKey(d);
                         const dayDockets = dockets.filter(doc => {
                           if (!doc.date) return false;
-                          const docDate = new Date(doc.date);
-                          return (doc.vehicleId === veh.id || doc.vehicleId === 'Unknown') && docDate >= dayStart && docDate <= dayEnd;
-                        }).filter(doc => doc.vehicleId === veh.id); // Strict match for Grid
-                        
-                        const currentStatus = getVehicleStatusForDate(veh.id, d);
+                          return (doc.vehicleId || 'Unknown') === veh.id && toDateKey(doc.date) === dayKey;
+                        });
+
+                        const statusEntry = getVehicleStatusForDate(veh.id, d);
+                        const currentStatus = statusEntry.status || 'Available';
+                        const statusLower = currentStatus.toLowerCase();
+                        const statusClass = statusLower === 'maintenance' ? 'maintenance' : statusLower === 'assigned' ? 'assigned' : statusLower === 'off shift' ? 'offshift' : '';
 
                         return (
                           <div key={i} className="grid-cell" style={{background:'#fff'}}>
@@ -247,8 +332,9 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
                                 {dayDockets.map(doc => renderBookingCard(doc, true))}
                               </div>
                             ) : (
-                              <div className={`grid-empty-state ${currentStatus === 'Maintenance' ? 'maintenance' : ''}`}>
-                                {currentStatus}
+                              <div className={`grid-empty-state ${statusClass}`} style={{flexDirection:'column', gap:'2px', padding:'4px', textAlign:'center'}}>
+                                <span>{currentStatus}</span>
+                                {statusEntry.ref && <span style={{fontSize:'8px', fontWeight:600, opacity:0.8}}>{statusEntry.ref}</span>}
                               </div>
                             )}
                           </div>
@@ -264,15 +350,10 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
           /* Agenda View */
           <div style={{display:'flex', flexDirection:'column', gap:'30px'}}>
             {gridDays.map((d, index) => {
-              const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
-              const dayEnd = new Date(d); dayEnd.setHours(23,59,59,999);
+              const dayKey = toDateKey(d);
               const isToday = isTodayDate(d);
-              
-              const dayDocketsAll = dockets.filter(doc => {
-                 if (!doc.date) return false;
-                 const docDate = new Date(doc.date);
-                 return docDate >= dayStart && docDate <= dayEnd;
-              });
+
+              const dayDocketsAll = dockets.filter(doc => doc.date && toDateKey(doc.date) === dayKey);
 
               return (
                 <div key={index}>
@@ -293,12 +374,12 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, o
                     </div>
                   ) : (
                     <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
-                      {FLEET.map(veh => {
-                        const vehDockets = dayDocketsAll.filter(doc => doc.vehicleId === veh.id);
+                      {fleetList.map(veh => {
+                        const vehDockets = dayDocketsAll.filter(doc => (doc.vehicleId || 'Unknown') === veh.id);
                         if (vehDockets.length === 0) return null;
 
                         const isOwn = veh.id === YOUR_VEHICLE;
-                        
+
                         return (
                           <div key={veh.id} className={!isOwn ? 'dimmed-vehicle' : ''}>
                             <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px', padding:'0 2px'}}>

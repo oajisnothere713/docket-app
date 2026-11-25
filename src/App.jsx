@@ -14,17 +14,24 @@ function App() {
   const [fleetStatuses, setFleetStatuses] = useState([]);
   const [selectedDocket, setSelectedDocket] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
 
   const fetchDockets = () => {
     const API_URL = import.meta.env.VITE_API_URL || '';
     fetch(`${API_URL}/api/dockets`)
-      .then(res => res.json())
+      .then(async res => {
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.message || `HTTP ${res.status}`);
+        }
+        return data;
+      })
       .then(data => {
         if (!Array.isArray(data)) {
-          console.error('Expected array for dockets, got:', data);
-          return;
+          throw new Error('Unexpected response format for dockets');
         }
         setDockets(data);
+        setApiError(null);
         setLoading(false);
         setSelectedDocket(prev => {
           if (prev) {
@@ -35,6 +42,7 @@ function App() {
       })
       .catch(err => {
         console.error('Failed to fetch dockets:', err);
+        setApiError(err.message || 'Failed to load dockets from server');
         setLoading(false);
       });
   };
@@ -42,15 +50,23 @@ function App() {
   const fetchFleetStatuses = () => {
     const API_URL = import.meta.env.VITE_API_URL || '';
     fetch(`${API_URL}/api/fleetstatuses`)
-      .then(res => res.json())
+      .then(async res => {
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.message || `HTTP ${res.status}`);
+        }
+        return data;
+      })
       .then(data => {
         if (!Array.isArray(data)) {
-          console.error('Expected array for fleet statuses, got:', data);
-          return;
+          throw new Error('Unexpected response format for fleet statuses');
         }
         setFleetStatuses(data);
       })
-      .catch(err => console.error('Failed to fetch fleet statuses:', err));
+      .catch(err => {
+        console.error('Failed to fetch fleet statuses:', err);
+        setApiError(prev => prev || err.message || 'Failed to load fleet statuses');
+      });
   };
 
   useEffect(() => {
@@ -103,6 +119,8 @@ function App() {
     setCurrentScreen('schedule'); // Go back to schedule
   };
 
+  const activeDocketCount = dockets.filter(d => d.status === 'planned' || d.status === 'inprogress').length;
+
   return (
     <div style={{height:'100vh',width:'100vw',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',background:'radial-gradient(1200px 700px at 50% -10%,#D5DCE7,#C0C9D7)'}}>
       <div id="tabBezel" style={{width:'800px',flexShrink:0,background:'#0B0F17',borderRadius:'44px',padding:'15px',boxShadow:'0 40px 90px -20px rgba(15,23,42,.55),inset 0 0 0 2px #23293A',transformOrigin:'center center'}}>
@@ -113,8 +131,8 @@ function App() {
           {currentScreen === 'schedule' && (
             <div data-screen-label="Schedule" style={{display:'flex',flexDirection:'column',height:'100%',minHeight:0}}>
               <Header />
-              <ScheduleScreen dockets={dockets} fleetStatuses={fleetStatuses} loading={loading} onOpenDocket={openDocket} />
-              <BottomNav />
+              <ScheduleScreen dockets={dockets} fleetStatuses={fleetStatuses} loading={loading} apiError={apiError} onOpenDocket={openDocket} />
+              <BottomNav docketCount={activeDocketCount} />
             </div>
           )}
 
@@ -128,7 +146,7 @@ function App() {
               />
               <div style={{flex:1,display:'flex',flexDirection:'column',minWidth:0,height:'100%',background:'#F4F7FB'}}>
                 <div id="docketScroll" style={{flex:1,overflowY:'auto',minHeight:0,padding:'20px 22px 30px'}}>
-                  {docketPage === 'summary' && <DocketSummary docket={selectedDocket} onSubmit={handleDocketSubmit} />}
+                  {docketPage === 'summary' && <DocketSummary key={selectedDocket._id} docket={selectedDocket} onSubmit={handleDocketSubmit} />}
                   {docketPage === 'additional' && <DocketAdditional docket={selectedDocket} />}
                 </div>
               </div>
