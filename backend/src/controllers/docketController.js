@@ -59,6 +59,25 @@ export const getDocketById = async (req, res) => {
   res.status(404).json({ message: 'Not implemented' });
 };
 
+const mapProductsToBooking = (products) =>
+  products.map(p => ({
+    materialId: p.matNo || p.materialId || '',
+    name: p.name || '',
+    category: p.cls || p.category || 'BULK',
+    plannedQty: Number(p.scheduledQty ?? p.plannedQty ?? 0),
+    actualQty: Number(p.actualQty ?? 0),
+    uom: p.uom || 't'
+  }));
+
+const mapServicesToBooking = (services) =>
+  services.map(s => ({
+    serviceId: s.matNo || s.serviceId || '',
+    name: s.name || '',
+    qty: Number(s.scheduledQty ?? s.qty ?? 0),
+    actualQty: Number(s.actualQty ?? 0),
+    uom: s.uom || 'ea'
+  }));
+
 // @desc    Submit / Update a completed docket
 // @route   POST /api/dockets/:id/submit
 export const submitDocket = async (req, res) => {
@@ -81,14 +100,7 @@ export const submitDocket = async (req, res) => {
         if (notes !== undefined) dd.notes = notes;
 
         if (Array.isArray(products)) {
-          dd.products = products.map(p => ({
-            materialId: p.matNo || p.materialId || '',
-            name: p.name || '',
-            category: p.cls || p.category || 'BULK',
-            plannedQty: Number(p.scheduledQty ?? p.plannedQty ?? 0),
-            actualQty: Number(p.actualQty ?? 0),
-            uom: p.uom || 't'
-          }));
+          dd.products = mapProductsToBooking(products);
         } else if (actualQuantities && dd.products) {
           dd.products.forEach(p => {
             const key = p.materialId;
@@ -99,13 +111,7 @@ export const submitDocket = async (req, res) => {
         }
 
         if (Array.isArray(services)) {
-          dd.services = services.map(s => ({
-            serviceId: s.matNo || s.serviceId || '',
-            name: s.name || '',
-            qty: Number(s.scheduledQty ?? s.qty ?? 0),
-            actualQty: Number(s.actualQty ?? 0),
-            uom: s.uom || 'ea'
-          }));
+          dd.services = mapServicesToBooking(services);
         } else if (actualQuantities && dd.services) {
           dd.services.forEach(s => {
             const key = s.serviceId || s.materialId;
