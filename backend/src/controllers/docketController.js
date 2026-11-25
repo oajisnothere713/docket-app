@@ -64,7 +64,7 @@ export const getDocketById = async (req, res) => {
 export const submitDocket = async (req, res) => {
   try {
     const docketNo = req.params.id;
-    const { actualQuantities, signature, notes } = req.body;
+    const { actualQuantities, products, services, signature, notes } = req.body;
     
     const booking = await Booking.findOne({ 'deliveryDockets.docketNumber': docketNo });
     if (!booking) return res.status(404).json({ message: 'Docket not found' });
@@ -79,20 +79,39 @@ export const submitDocket = async (req, res) => {
         }
         if (signature) dd.signature = signature;
         if (notes !== undefined) dd.notes = notes;
-        if (actualQuantities && dd.products) {
+
+        if (Array.isArray(products)) {
+          dd.products = products.map(p => ({
+            materialId: p.matNo || p.materialId || '',
+            name: p.name || '',
+            category: p.cls || p.category || 'BULK',
+            plannedQty: Number(p.scheduledQty ?? p.plannedQty ?? 0),
+            actualQty: Number(p.actualQty ?? 0),
+            uom: p.uom || 't'
+          }));
+        } else if (actualQuantities && dd.products) {
           dd.products.forEach(p => {
-             const key = p.materialId;
-             if (key && actualQuantities[key] !== undefined) {
-               p.actualQty = actualQuantities[key];
-             }
+            const key = p.materialId;
+            if (key && actualQuantities[key] !== undefined) {
+              p.actualQty = actualQuantities[key];
+            }
           });
         }
-        if (actualQuantities && dd.services) {
+
+        if (Array.isArray(services)) {
+          dd.services = services.map(s => ({
+            serviceId: s.matNo || s.serviceId || '',
+            name: s.name || '',
+            qty: Number(s.scheduledQty ?? s.qty ?? 0),
+            actualQty: Number(s.actualQty ?? 0),
+            uom: s.uom || 'ea'
+          }));
+        } else if (actualQuantities && dd.services) {
           dd.services.forEach(s => {
-             const key = s.serviceId || s.materialId;
-             if (key && actualQuantities[key] !== undefined) {
-               s.actualQty = actualQuantities[key];
-             }
+            const key = s.serviceId || s.materialId;
+            if (key && actualQuantities[key] !== undefined) {
+              s.actualQty = actualQuantities[key];
+            }
           });
         }
         updated = true;
