@@ -8,7 +8,7 @@ export const getSchedule = async (req, res) => {
     let allDockets = [];
     
     bookings.forEach(booking => {
-      booking.deliveryDockets.forEach(dd => {
+      (booking.deliveryDockets || []).forEach(dd => {
         allDockets.push({
           _id: dd.docketNumber, 
           bookingId: booking._id,
@@ -64,7 +64,7 @@ export const getDocketById = async (req, res) => {
 export const submitDocket = async (req, res) => {
   try {
     const docketNo = req.params.id;
-    const { actualQuantities, signature } = req.body;
+    const { actualQuantities, signature, notes } = req.body;
     
     const booking = await Booking.findOne({ 'deliveryDockets.docketNumber': docketNo });
     if (!booking) return res.status(404).json({ message: 'Docket not found' });
@@ -78,6 +78,7 @@ export const submitDocket = async (req, res) => {
           dd.status = 'delivered';
         }
         if (signature) dd.signature = signature;
+        if (notes !== undefined) dd.notes = notes;
         if (actualQuantities && dd.products) {
           dd.products.forEach(p => {
              const key = p.materialId;

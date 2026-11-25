@@ -124,6 +124,8 @@ input,select,textarea{font-family:inherit}
 .grid-group-badge { background: #4B5563; color: #D1D5DB; padding: 1px 6px; border-radius: 10px; font-size: 9px; font-weight: 800; }
 .grid-empty-state { flex: 1; border: 1px dashed #D1D5DB; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #AAB4C2; background: #F9FAFB; min-height: 60px; }
 .grid-empty-state.maintenance { border-color: #FDE68A; color: #D97706; background: #FFFBEB; }
+.grid-empty-state.assigned { border-color: #BFDBFE; color: #1D4ED8; background: #EFF6FF; }
+.grid-empty-state.offshift { border-color: #E5E7EB; color: #6B7280; background: #F3F4F6; }
 .veh-name { font-size: 11.5px; font-weight: 800; color: #111827; display: flex; align-items: center; justify-content: space-between; gap: 4px; line-height: 1.2; }
 .veh-type { font-size: 9px; color: #9CA3AF; margin-top: 2px; }
 .veh-ops { font-size: 9px; color: #9CA3AF; margin-top: 2px; line-height: 1.2; }

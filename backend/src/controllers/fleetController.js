@@ -1,9 +1,11 @@
 import mongoose from 'mongoose';
+import connectDB from '../config/db.js';
 
 // @desc    Get fleet statuses
 // @route   GET /api/fleetstatuses
 export const getFleetStatuses = async (req, res) => {
   try {
+    await connectDB();
     const db = mongoose.connection.db;
     const statuses = await db.collection('fleetstatuses').find({}).toArray();
     res.json(statuses);

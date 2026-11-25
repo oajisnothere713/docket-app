@@ -1,7 +1,9 @@
+import { formatDisplayDate } from '../utils/dateUtils';
+
 export default function DocketAdditional({ docket }) {
   return (
     <div>
-      <div className="grp-title">Additional Information<span style={{fontSize:'11px',fontWeight:600,color:'#9CA3AF'}}>{docket.plant} · {new Date(docket.date).toLocaleDateString()}</span></div>
+      <div className="grp-title">Additional Information<span style={{fontSize:'11px',fontWeight:600,color:'#9CA3AF'}}>{docket.plant} · {formatDisplayDate(docket.date)}</span></div>
 
       {/* Shot */}
       <div id="sec-shot" style={{scrollMarginTop:'8px'}}>

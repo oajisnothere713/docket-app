@@ -8,14 +8,21 @@ import fleetRoutes from './routes/fleetRoutes.js';
 // Load env vars
 dotenv.config();
 
-// Connect to database
-connectDB();
-
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Ensure database connection is ready before handling API requests (important for serverless cold starts)
+app.use('/api', async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    res.status(500).json({ message: 'Database connection failed', error: error.message });
+  }
+});
 
 // Routes
 app.use('/api/dockets', docketRoutes);
@@ -29,9 +36,13 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+  connectDB()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+      });
+    })
+    .catch(() => process.exit(1));
 }
 
 export default app;

@@ -1,4 +1,8 @@
+import { formatDisplayDate } from '../utils/dateUtils';
+
 export default function Sidebar({ docket, onBack, currentPage, onChangePage }) {
+  const status = (docket.status || 'planned').toLowerCase();
+
   return (
     <aside style={{width:'214px',minWidth:'214px',background:'#0F2440',display:'flex',flexDirection:'column',height:'100%'}}>
       {/* docket meta */}
@@ -7,14 +11,14 @@ export default function Sidebar({ docket, onBack, currentPage, onChangePage }) {
         <div style={{fontSize:'9px',fontWeight:700,color:'#7E8CA3',textTransform:'uppercase',letterSpacing:'.6px'}}>Delivery Docket No.</div>
         <div style={{fontSize:'20px',fontWeight:800,color:'#fff',letterSpacing:'-.4px',marginTop:'3px'}}>{docket.docketNo}</div>
         <div style={{display:'flex',alignItems:'center',gap:'6px',marginTop:'9px'}}>
-          <span className={`chip chip-${docket.status === 'inprogress' ? 'amber' : docket.status === 'planned' ? 'grey' : 'green'}`}>
-            {docket.status === 'inprogress' ? 'In Progress' : docket.status.charAt(0).toUpperCase() + docket.status.slice(1)}
+          <span className={`chip chip-${status === 'inprogress' ? 'amber' : status === 'planned' ? 'grey' : 'green'}`}>
+            {status === 'inprogress' ? 'In Progress' : status.charAt(0).toUpperCase() + status.slice(1)}
           </span>
         </div>
         <div style={{marginTop:'12px',display:'flex',flexDirection:'column',gap:'6px'}}>
           <div style={{display:'flex',alignItems:'center',gap:'7px'}}><i className="ti ti-flask" style={{fontSize:'13px',color:'#5B6B85'}}></i><span style={{fontSize:'11px',color:'#C7D0DD',fontWeight:600}}>{docket.blastNo}</span></div>
           <div style={{display:'flex',alignItems:'center',gap:'7px'}}><i className="ti ti-map-pin" style={{fontSize:'13px',color:'#5B6B85'}}></i><span style={{fontSize:'11px',color:'#C7D0DD',fontWeight:600}}>{docket.site}</span></div>
-          <div style={{display:'flex',alignItems:'center',gap:'7px'}}><i className="ti ti-calendar" style={{fontSize:'13px',color:'#5B6B85'}}></i><span style={{fontSize:'11px',color:'#C7D0DD',fontWeight:600}}>{new Date(docket.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span></div>
+          <div style={{display:'flex',alignItems:'center',gap:'7px'}}><i className="ti ti-calendar" style={{fontSize:'13px',color:'#5B6B85'}}></i><span style={{fontSize:'11px',color:'#C7D0DD',fontWeight:600}}>{formatDisplayDate(docket.date)}</span></div>
         </div>
       </div>
 

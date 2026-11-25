@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
+import { formatDisplayDate } from '../utils/dateUtils';
 
 export default function DocketSummary({ docket, onSubmit }) {
   const getInitialQuantities = () => {
     const q = {};
-    docket.products.forEach(p => {
+    (docket.products || []).forEach(p => {
       q[p.matNo] = p.actualQty !== undefined && p.actualQty !== null ? p.actualQty : p.scheduledQty;
     });
     if (docket.services) {
@@ -15,7 +16,7 @@ export default function DocketSummary({ docket, onSubmit }) {
   };
   const [actualQuantities, setActualQuantities] = useState(getInitialQuantities());
 
-  const hasVariance = docket.products.some(p => actualQuantities[p.matNo] != p.scheduledQty) || 
+  const hasVariance = (docket.products || []).some(p => actualQuantities[p.matNo] != p.scheduledQty) || 
                      (docket.services && docket.services.some(s => actualQuantities[s.matNo] != s.scheduledQty));
 
   const handleQtyChange = (matNo, val) => {
@@ -26,6 +27,7 @@ export default function DocketSummary({ docket, onSubmit }) {
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
   const [receiverName, setReceiverName] = useState(docket.signature?.signedBy && docket.signature.signedBy !== 'Customer' ? docket.signature.signedBy : '');
   const [notes, setNotes] = useState(docket.notes || '');
 
@@ -33,7 +35,7 @@ export default function DocketSummary({ docket, onSubmit }) {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
-  const isReadOnly = ['delivered', 'signed', 'submitted'].includes(docket.status);
+  const isReadOnly = ['delivered', 'signed', 'submitted'].includes((docket.status || '').toLowerCase());
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -91,6 +93,7 @@ export default function DocketSummary({ docket, onSubmit }) {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       const API_URL = import.meta.env.VITE_API_URL || '';
       const response = await fetch(`${API_URL}/api/dockets/${docket._id}/submit`, {
@@ -98,6 +101,7 @@ export default function DocketSummary({ docket, onSubmit }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           actualQuantities: Object.fromEntries(Object.entries(actualQuantities).map(([k, v]) => [k, Number(v)])),
+          notes,
           signature: { 
             isSigned: hasSignature || receiverName.trim().length > 0, 
             signedBy: receiverName.trim() || '',
@@ -107,16 +111,23 @@ export default function DocketSummary({ docket, onSubmit }) {
       });
       if (response.ok) {
         onSubmit();
+      } else {
+        const data = await response.json().catch(() => ({}));
+        setSubmitError(data.message || `Failed to submit docket (HTTP ${response.status})`);
       }
     } catch (err) {
       console.error('Submit failed', err);
+      setSubmitError(err.message || 'Failed to submit docket');
+    } finally {
       setIsSubmitting(false);
     }
   };
 
+  const formattedDate = formatDisplayDate(docket.date);
+
   return (
     <div>
-      <div className="grp-title">Delivery Summary<span style={{fontSize:'11px',fontWeight:600,color:'#9CA3AF'}}>{docket.plant} · {new Date(docket.date).toLocaleDateString()}</span></div>
+      <div className="grp-title">Delivery Summary<span style={{fontSize:'11px',fontWeight:600,color:'#9CA3AF'}}>{docket.plant} · {formattedDate}</span></div>
 
       {/* Delivery / summary fields */}
       <div id="sec-summary" style={{scrollMarginTop:'8px'}}>
@@ -124,7 +135,7 @@ export default function DocketSummary({ docket, onSubmit }) {
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'11px',marginBottom:'24px'}}>
           <div className="fld fld-ro"><div className="fld-lbl"><i className="ti ti-lock" style={{fontSize:'10px'}}></i>Docket No.</div><div className="fld-val">{docket.docketNo}</div></div>
           <div className="fld"><div className="fld-lbl">Purchase Order No.</div><input defaultValue="PO-2026-991" /></div>
-          <div className="fld"><div className="fld-lbl">Date</div><input defaultValue={new Date(docket.date).toLocaleDateString()} /></div>
+          <div className="fld"><div className="fld-lbl">Date</div><input defaultValue={formattedDate} /></div>
           <div className="fld fld-ro"><div className="fld-lbl"><i className="ti ti-lock" style={{fontSize:'10px'}}></i>Blast No.</div><div className="fld-val">{docket.blastNo}</div></div>
           <div className="fld fld-ro"><div className="fld-lbl"><i className="ti ti-lock" style={{fontSize:'10px'}}></i>Plant</div><div className="fld-val">{docket.plant}</div></div>
           <div className="fld fld-ro"><div className="fld-lbl"><i className="ti ti-lock" style={{fontSize:'10px'}}></i>Scheduled Start</div><div className="fld-val">{docket.scheduledStart} hrs</div></div>
@@ -150,7 +161,7 @@ export default function DocketSummary({ docket, onSubmit }) {
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'11px',marginBottom:'24px'}}>
           <div className="fld selwrap"><div className="fld-lbl">Vehicle</div><select defaultValue={docket.vehicleId} disabled={isReadOnly}><option>{docket.vehicleId}</option></select><i className="ti ti-chevron-down chev"></i></div>
           <div className="fld fld-ro"><div className="fld-lbl"><i className="ti ti-lock" style={{fontSize:'10px'}}></i>Vehicle Type</div><div className="fld-val">{docket.vehicleType}</div></div>
-          <div className="fld selwrap" style={{gridColumn:'span 2'}}><div className="fld-lbl">Operators</div><select disabled={isReadOnly}><option>{docket.operators.join(', ')}</option></select><i className="ti ti-chevron-down chev"></i></div>
+          <div className="fld selwrap" style={{gridColumn:'span 2'}}><div className="fld-lbl">Operators</div><select disabled={isReadOnly}><option>{(docket.operators || []).join(', ') || 'Not assigned'}</option></select><i className="ti ti-chevron-down chev"></i></div>
           <div className="fld selwrap"><div className="fld-lbl">Blaster / Shotfirer</div><select defaultValue={docket.shotfirer} disabled={isReadOnly}><option>{docket.shotfirer}</option></select><i className="ti ti-chevron-down chev"></i></div>
           <div className="fld selwrap"><div className="fld-lbl">Surveyor (optional)</div><select disabled={isReadOnly}><option>Not assigned</option></select><i className="ti ti-chevron-down chev"></i></div>
         </div>
@@ -163,12 +174,12 @@ export default function DocketSummary({ docket, onSubmit }) {
           <table className="tbl">
             <thead><tr><th>Material Name</th><th style={{textAlign:'right'}}>Sched.</th><th style={{textAlign:'right'}}>Actual</th><th>UoM</th><th></th></tr></thead>
             <tbody>
-              {docket.products.map(p => (
+              {(docket.products || []).map(p => (
                 <tr key={p.matNo}>
                   <td style={{fontWeight:600}}>{p.name}</td>
                   <td className="qty-sched">{p.scheduledQty}</td>
                   <td style={{textAlign:'right'}}>
-                    <input className={`qty-in ${actualQuantities[p.matNo] != p.scheduledQty ? 'amber' : ''}`} value={actualQuantities[p.matNo] || ''} onChange={(e) => handleQtyChange(p.matNo, e.target.value)} disabled={isReadOnly}/>
+                    <input className={`qty-in ${actualQuantities[p.matNo] != p.scheduledQty ? 'amber' : ''}`} value={actualQuantities[p.matNo] ?? ''} onChange={(e) => handleQtyChange(p.matNo, e.target.value)} disabled={isReadOnly}/>
                   </td>
                   <td style={{color:'#6B7280',fontWeight:600}}>{p.uom}</td>
                   <td>{!isReadOnly && <button className="delx"><i className="ti ti-trash" style={{fontSize:'14px'}}></i></button>}</td>
@@ -197,7 +208,7 @@ export default function DocketSummary({ docket, onSubmit }) {
                   <tr key={idx}>
                     <td style={{fontWeight:600}}>{s.name}</td>
                     <td className="qty-sched">{s.scheduledQty}</td>
-                    <td style={{textAlign:'right'}}><input className={`qty-in ${actualQuantities[s.matNo] != s.scheduledQty ? 'amber' : ''}`} value={actualQuantities[s.matNo] || ''} onChange={(e) => handleQtyChange(s.matNo, e.target.value)} disabled={isReadOnly}/></td>
+                    <td style={{textAlign:'right'}}><input className={`qty-in ${actualQuantities[s.matNo] != s.scheduledQty ? 'amber' : ''}`} value={actualQuantities[s.matNo] ?? ''} onChange={(e) => handleQtyChange(s.matNo, e.target.value)} disabled={isReadOnly}/></td>
                     <td style={{color:'#6B7280',fontWeight:600}}>{s.uom}</td>
                     <td>{!isReadOnly && <button className="delx"><i className="ti ti-trash" style={{fontSize:'14px'}}></i></button>}</td>
                   </tr>
@@ -225,7 +236,7 @@ export default function DocketSummary({ docket, onSubmit }) {
           {/* delivered by */}
           <div style={{border:'1.5px solid #E8EDF3',borderRadius:'12px',padding:'14px',background:'#fff'}}>
             <div style={{fontSize:'10px',fontWeight:800,color:'#98A2B2',textTransform:'uppercase',letterSpacing:'.5px'}}>Delivered By</div>
-            <div style={{fontSize:'14px',fontWeight:800,color:'#1F2937',marginTop:'4px'}}>{docket.operators[0]}</div>
+            <div style={{fontSize:'14px',fontWeight:800,color:'#1F2937',marginTop:'4px'}}>{(docket.operators && docket.operators[0]) || 'Operator'}</div>
             <div style={{height:'78px',borderRadius:'9px',background:'#F7F9FC',border:'1px solid #EEF2F7',marginTop:'9px',display:'flex',alignItems:'center',justifyContent:'center'}}>
               <svg width="150" height="46" viewBox="0 0 150 46"><path d="M6 30 C 18 8, 26 8, 32 26 S 46 40, 54 20 S 70 6, 80 28 C 88 40, 98 30, 108 18 C 118 8, 130 14, 144 30" fill="none" stroke="#1E3A5C" strokeWidth="2.2" strokeLinecap="round"/></svg>
             </div>
@@ -267,10 +278,15 @@ export default function DocketSummary({ docket, onSubmit }) {
             )}
           </div>
         </div>
+        {submitError && (
+          <div style={{marginTop:'14px',background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:'9px',padding:'10px 12px',color:'#DC2626',fontSize:'12px',fontWeight:600}}>
+            {submitError}
+          </div>
+        )}
         {/* submit button */}
         <div style={{marginTop: '20px', display: 'flex', justifyContent: 'flex-end'}}>
-          <button onClick={handleSubmit} disabled={isSubmitting || docket.status === 'delivered' || docket.status === 'signed'} style={{padding: '12px 24px', background: (docket.status === 'delivered' || docket.status === 'signed') ? '#AAB4C2' : '#1E3A5C', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: (docket.status === 'delivered' || docket.status === 'signed') ? 'not-allowed' : 'pointer'}}>
-            {isSubmitting ? 'Submitting...' : (docket.status === 'delivered' || docket.status === 'signed') ? 'Already Submitted' : 'Submit Docket'}
+          <button onClick={handleSubmit} disabled={isSubmitting || isReadOnly} style={{padding: '12px 24px', background: isReadOnly ? '#AAB4C2' : '#1E3A5C', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: isReadOnly ? 'not-allowed' : 'pointer'}}>
+            {isSubmitting ? 'Submitting...' : isReadOnly ? 'Already Submitted' : 'Submit Docket'}
           </button>
         </div>
       </div>
