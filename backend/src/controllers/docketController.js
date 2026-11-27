@@ -1,5 +1,21 @@
 import Booking from '../models/Booking.js';
 
+const CREW_NAMES = {
+  'EMP-2025-01': 'Ramesh Patil',
+  'EMP-2025-02': 'Suresh Yadav',
+  'EMP-2025-03': 'Blair Huntingdon',
+  'EMP-2025-04': 'CREW B',
+  'EMP-2025-05': 'Mike Sullivan',
+  'EMP-2025-06': 'Dan Brooks',
+  'EMP-2025-07': 'James Lee',
+  'EMP-2025-08': 'Priya Sharma'
+};
+
+const resolveCrewName = (idOrName) => {
+  if (!idOrName) return '';
+  return CREW_NAMES[String(idOrName).trim().toUpperCase()] || idOrName;
+};
+
 // @desc    Get all dockets for the day (Schedule)
 // @route   GET /api/dockets
 export const getSchedule = async (req, res) => {
@@ -20,8 +36,10 @@ export const getSchedule = async (req, res) => {
           status: (dd.status || 'Planned').toLowerCase(),
           vehicleId: dd.vehicleId || 'Unknown',
           vehicleType: 'Bulk Mix Truck',
-          operators: dd.operatorIds || [],
-          shotfirer: dd.shotfirerIds && dd.shotfirerIds.length > 0 ? dd.shotfirerIds[0] : 'Not assigned',
+          operatorIds: dd.operatorIds || [],
+          operators: (dd.operatorIds || []).map(resolveCrewName),
+          shotfirer: dd.shotfirerIds && dd.shotfirerIds.length > 0 ? resolveCrewName(dd.shotfirerIds[0]) : 'Not assigned',
+          surveyor: dd.surveyorIds && dd.surveyorIds.length > 0 ? resolveCrewName(dd.surveyorIds[0]) : 'Not assigned',
           scheduledStart: booking.startTime || '',
           customerName: booking.customerName || '',
           contractNo: booking.contractId || '',

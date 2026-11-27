@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { formatDisplayDate } from '../utils/dateUtils';
+import { getCrewName, formatCrewNames } from '../utils/crewUtils';
 import CustomSelect from './CustomSelect';
 
 const FALLBACK_MATERIALS = [
@@ -338,11 +339,11 @@ export default function DocketSummary({ docket, onSubmit }) {
       <div id="sec-vehicle" style={{scrollMarginTop:'8px'}}>
         <div className="sec-h"><i className="ti ti-truck"></i>Vehicle &amp; Operator Info</div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'11px',marginBottom:'24px'}}>
-          <div className="fld selwrap"><div className="fld-lbl">Vehicle</div><select defaultValue={docket.vehicleId} disabled={isReadOnly}><option>{docket.vehicleId}</option></select><i className="ti ti-chevron-down chev"></i></div>
+          <div className="fld selwrap"><div className="fld-lbl">Vehicle</div><select value={docket.vehicleId || ''} onChange={() => {}} disabled={isReadOnly}><option value={docket.vehicleId || ''}>{docket.vehicleId}</option></select><i className="ti ti-chevron-down chev"></i></div>
           <div className="fld fld-ro"><div className="fld-lbl"><i className="ti ti-lock" style={{fontSize:'10px'}}></i>Vehicle Type</div><div className="fld-val">{docket.vehicleType}</div></div>
-          <div className="fld selwrap" style={{gridColumn:'span 2'}}><div className="fld-lbl">Operators</div><select disabled={isReadOnly}><option>{(docket.operators || []).join(', ') || 'Not assigned'}</option></select><i className="ti ti-chevron-down chev"></i></div>
-          <div className="fld selwrap"><div className="fld-lbl">Blaster / Shotfirer</div><select defaultValue={docket.shotfirer} disabled={isReadOnly}><option>{docket.shotfirer}</option></select><i className="ti ti-chevron-down chev"></i></div>
-          <div className="fld selwrap"><div className="fld-lbl">Surveyor (optional)</div><select disabled={isReadOnly}><option>Not assigned</option></select><i className="ti ti-chevron-down chev"></i></div>
+          <div className="fld selwrap" style={{gridColumn:'span 2'}}><div className="fld-lbl">Operators</div><select value={formatCrewNames(docket.operators) || 'Not assigned'} onChange={() => {}} disabled={isReadOnly}><option>{formatCrewNames(docket.operators) || 'Not assigned'}</option></select><i className="ti ti-chevron-down chev"></i></div>
+          <div className="fld selwrap"><div className="fld-lbl">Blaster / Shotfirer</div><select value={getCrewName(docket.shotfirer) || 'Not assigned'} onChange={() => {}} disabled={isReadOnly}><option>{getCrewName(docket.shotfirer) || 'Not assigned'}</option></select><i className="ti ti-chevron-down chev"></i></div>
+          <div className="fld selwrap"><div className="fld-lbl">Surveyor (optional)</div><select value={docket.surveyor ? getCrewName(docket.surveyor) : 'Not assigned'} onChange={() => {}} disabled={isReadOnly}><option>{docket.surveyor ? getCrewName(docket.surveyor) : 'Not assigned'}</option></select><i className="ti ti-chevron-down chev"></i></div>
         </div>
       </div>
 
@@ -479,7 +480,7 @@ export default function DocketSummary({ docket, onSubmit }) {
           {/* delivered by */}
           <div style={{border:'1.5px solid #E8EDF3',borderRadius:'12px',padding:'14px',background:'#fff'}}>
             <div style={{fontSize:'10px',fontWeight:800,color:'#98A2B2',textTransform:'uppercase',letterSpacing:'.5px'}}>Delivered By</div>
-            <div style={{fontSize:'14px',fontWeight:800,color:'#1F2937',marginTop:'4px'}}>{(docket.operators && docket.operators[0]) || 'Operator'}</div>
+            <div style={{fontSize:'14px',fontWeight:800,color:'#1F2937',marginTop:'4px'}}>{getCrewName(docket.operators && docket.operators[0]) || 'Operator'}</div>
             <div style={{height:'78px',borderRadius:'9px',background:'#F7F9FC',border:'1px solid #EEF2F7',marginTop:'9px',display:'flex',alignItems:'center',justifyContent:'center'}}>
               <svg width="150" height="46" viewBox="0 0 150 46"><path d="M6 30 C 18 8, 26 8, 32 26 S 46 40, 54 20 S 70 6, 80 28 C 88 40, 98 30, 108 18 C 118 8, 130 14, 144 30" fill="none" stroke="#1E3A5C" strokeWidth="2.2" strokeLinecap="round"/></svg>
             </div>
