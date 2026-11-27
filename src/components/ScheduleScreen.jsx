@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { toDateKey, parseLocalDate } from '../utils/dateUtils';
+import { getCrewName } from '../utils/crewUtils';
 
 const formatDate = (date) => {
   const d = parseLocalDate(date);
@@ -39,7 +40,7 @@ const GROUP_ORDER = ['BMD Trucks', 'Blast Crew Vehicles', 'Support Trucks', 'Oth
 
 function classifyVehicle(id, vehicleDockets) {
   const known = KNOWN_FLEET_META[id];
-  const opsFromDockets = [...new Set(vehicleDockets.flatMap(d => d.operators || []).filter(Boolean))].join(', ');
+  const opsFromDockets = [...new Set(vehicleDockets.flatMap(d => d.operators || []).map(getCrewName).filter(Boolean))].join(', ');
 
   if (known) {
     return {
@@ -190,7 +191,7 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, a
                 </span>
               </div>
               <div style={{fontSize:'12px', fontWeight:700, color:'#374151', marginTop:'5px'}}><i className="ti ti-map-pin" style={{fontSize:'13px', color:'#B0B8C4'}}></i> {docket.site}</div>
-              <div style={{fontSize:'11px', color:'#6B7280', marginTop:'3px'}}>{docket.shotfirer} (Shotfirer)</div>
+              <div style={{fontSize:'11px', color:'#6B7280', marginTop:'3px'}}>{getCrewName(docket.shotfirer) || 'Not assigned'} (Shotfirer)</div>
             </div>
             <div style={{textAlign:'right', flexShrink:0}}>
               <div style={{fontSize:'14px', fontWeight:800, color:'#111827'}}><i className="ti ti-clock" style={{fontSize:'13px', color:'#B0B8C4'}}></i> {docket.scheduledStart} hrs</div>
