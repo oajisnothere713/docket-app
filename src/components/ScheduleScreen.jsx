@@ -123,9 +123,6 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, a
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showWeekend, setShowWeekend] = useState(false);
 
-  // Ownership modal state
-  const [selectedDocketToOpen, setSelectedDocketToOpen] = useState(null);
-
   const weekInfo = getWeekRange(currentDate);
   const YOUR_VEHICLE = 'MH-12-BMD-01';
 
@@ -163,21 +160,6 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, a
     return { status: 'Available' };
   };
 
-  const handleDocketClick = (docket) => {
-    if (docket.vehicleId && docket.vehicleId !== YOUR_VEHICLE) {
-      setSelectedDocketToOpen(docket);
-    } else {
-      onOpenDocket(docket);
-    }
-  };
-
-  const confirmOpenDocket = () => {
-    if (selectedDocketToOpen) {
-      onOpenDocket(selectedDocketToOpen);
-      setSelectedDocketToOpen(null);
-    }
-  };
-
   const isTodayDate = (dateObj) => toDateKey(new Date()) === toDateKey(dateObj);
   const isTodaySelected = isTodayDate(currentDate);
 
@@ -187,7 +169,7 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, a
     const statusDotColor = status === 'inprogress' ? '#D97706' : status === 'planned' ? '#2E5390' : status === 'delivered' || status === 'signed' ? '#16A34A' : '#9CA3AF';
 
     return (
-      <div key={docket._id} onClick={() => handleDocketClick(docket)} style={{
+      <div key={docket._id} onClick={() => onOpenDocket(docket)} style={{
         background:'#fff', borderLeft:`3px solid ${statusDotColor}`, borderTop:'1px solid #E4E9F0', borderRight:'1px solid #E4E9F0', borderBottom:'1px solid #E4E9F0', borderRadius:'6px', padding: compact ? '8px' : '12px', cursor:'pointer', height:'100%', position:'relative', transition:'box-shadow 0.2s', boxShadow:'0 1px 2px rgba(0,0,0,0.03)'
       }}>
         <div style={{position:'absolute', top:'8px', right:'8px', width:'6px', height:'6px', borderRadius:'50%', background: statusDotColor}}></div>
@@ -410,25 +392,6 @@ export default function ScheduleScreen({ dockets, fleetStatuses = [], loading, a
         <div style={{display:'flex', alignItems:'center', gap:'5px'}}><span className="sdot sdot-submitted"></span><span style={{fontSize:'10px', color:'#6B7280', fontWeight:600}}>Submitted</span></div>
         <div style={{display:'flex', alignItems:'center', gap:'5px', marginLeft:'auto'}}><span style={{width:'11px', height:'11px', borderRadius:'3px', background:'#FDECDF', borderLeft:'3px solid #E8590C'}}></span><span style={{fontSize:'10px', color:'#6B7280', fontWeight:600}}>Your vehicle</span></div>
       </div>
-
-      {/* Ownership Modal */}
-      {selectedDocketToOpen && (
-        <div className="modal-overlay">
-          <div className="modal-box">
-            <div style={{width:'40px', height:'40px', borderRadius:'50%', background:'#FEF2F2', color:'#DC2626', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'12px'}}>
-              <i className="ti ti-alert-triangle" style={{fontSize:'20px'}}></i>
-            </div>
-            <div style={{fontSize:'16px', fontWeight:800, color:'#111827', marginBottom:'6px'}}>Vehicle Mismatch</div>
-            <div style={{fontSize:'13px', color:'#4B5563', lineHeight:1.5, marginBottom:'20px'}}>
-              You are assigned to <strong>{YOUR_VEHICLE}</strong>. Do you want to open this docket for <strong>{selectedDocketToOpen.vehicleId}</strong>?
-            </div>
-            <div style={{display:'flex', gap:'10px', justifyContent:'flex-end'}}>
-              <button className="btn-ghost" onClick={() => setSelectedDocketToOpen(null)}>Dismiss</button>
-              <button className="btn-navy" onClick={confirmOpenDocket}>Accept</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
